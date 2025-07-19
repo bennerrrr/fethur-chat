@@ -1,0 +1,96 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  GO_VERSION: '1.21'
+  CGO_ENABLED: 1
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Build binaries
+        run: |
+          cd server
+          # Linux AMD64
+          GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build -ldflags="-s -w" -o fethur-server-linux-amd64 ./cmd/server
+          # Linux ARM64
+          GOOS=linux GOARCH=arm64 CGO_ENABLED=1 go build -ldflags="-s -w" -o fethur-server-linux-arm64 ./cmd/server
+          # macOS AMD64
+          GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 go build -ldflags="-s -w" -o fethur-server-darwin-amd64 ./cmd/server
+          # macOS ARM64
+          GOOS=darwin GOARCH=arm64 CGO_ENABLED=1 go build -ldflags="-s -w" -o fethur-server-darwin-arm64 ./cmd/server
+          # Windows AMD64
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=1 go build -ldflags="-s -w" -o fethur-server-windows-amd64.exe ./cmd/server
+
+      - name: Create release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            server/fethur-server-linux-amd64
+            server/fethur-server-linux-arm64
+            server/fethur-server-darwin-amd64
+            server/fethur-server-darwin-arm64
+            server/fethur-server-windows-amd64.exe
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+
+  docker-release:
+    name: Docker Release
+    runs-on: ubuntu-latest
+    needs: release
+    permissions:
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./docker/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          platforms: linux/amd64,linux/arm64 
