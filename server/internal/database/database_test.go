@@ -1,19 +1,10 @@
 package database
 
 import (
-	"os"
 	"testing"
 )
 
 func TestInit(t *testing.T) {
-	// Use a temporary database for testing
-	tempDB := "test_fethur.db"
-	defer os.Remove(tempDB)
-
-	// Temporarily change the database path
-	originalInit := Init
-	defer func() { Init = originalInit }()
-
 	// Test database initialization
 	db, err := Init()
 	if err != nil {

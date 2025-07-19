@@ -2,7 +2,6 @@ package auth
 
 import (
 	"testing"
-	"time"
 )
 
 func TestHashPassword(t *testing.T) {
