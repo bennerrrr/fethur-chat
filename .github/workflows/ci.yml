@@ -8,7 +8,6 @@ on:
 
 env:
   GO_VERSION: '1.21'
-  CGO_ENABLED: 1
 
 jobs:
   test:
@@ -34,25 +33,20 @@ jobs:
         run: |
           cd server
           go test -v ./...
-        env:
-          CGO_ENABLED: ${{ env.CGO_ENABLED }}
 
       - name: Run tests with race detection
         run: |
           cd server
           go test -race -v ./...
-        env:
-          CGO_ENABLED: ${{ env.CGO_ENABLED }}
 
       - name: Run tests with coverage
         run: |
           cd server
           go test -coverprofile=coverage.out -covermode=atomic ./...
-        env:
-          CGO_ENABLED: ${{ env.CGO_ENABLED }}
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
+        if: always()
         with:
           file: ./server/coverage.out
           flags: unittests
@@ -105,9 +99,7 @@ jobs:
       - name: Build binary
         run: |
           cd server
-          GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} CGO_ENABLED=1 go build -ldflags="-s -w" -o fethur-server-${{ matrix.os }}-${{ matrix.arch }} ./cmd/server
-        env:
-          CGO_ENABLED: ${{ env.CGO_ENABLED }}
+          GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -ldflags="-s -w" -o fethur-server-${{ matrix.os }}-${{ matrix.arch }} ./cmd/server
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -150,11 +142,10 @@ jobs:
       - name: Build Docker image
         run: |
           docker build -t fethur-server:latest -f docker/Dockerfile .
-          docker images
 
       - name: Test Docker image
         run: |
           docker run --rm -d --name fethur-test -p 8080:8080 fethur-server:latest
-          sleep 10
+          sleep 15
           curl -f http://localhost:8080/health || exit 1
           docker stop fethur-test 
