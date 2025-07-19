@@ -18,10 +18,25 @@ A lightweight, self-hostable Discord alternative built with Go.
 
 - Go 1.21 or later
 - SQLite (included with Go)
+- Docker & Docker Compose (optional)
 
-### Installation
+### Option 1: Development Mode
 
-1. **Clone and navigate to server directory:**
+```bash
+# From project root
+make dev
+```
+
+### Option 2: Docker
+
+```bash
+# From project root
+make docker-run
+```
+
+### Option 3: Manual Setup
+
+1. **Navigate to server directory:**
    ```bash
    cd server
    ```
@@ -135,12 +150,50 @@ server/
 │   ├── database/         # Database operations
 │   ├── server/           # HTTP server and routes
 │   └── websocket/        # WebSocket implementation
+├── .golangci.yml         # Linting configuration
 ├── go.mod               # Go module file
 └── README.md           # This file
 ```
 
+### Development Commands
+
+```bash
+# From project root
+make test          # Run tests
+make lint          # Run linter
+make fmt           # Format code
+make build         # Build binary
+make clean         # Clean artifacts
+```
+
 ### Environment Variables
 - `PORT` - Server port (default: 8080)
+- `GIN_MODE` - Gin mode (debug/release)
+
+### Testing
+
+```bash
+# Run all tests
+make test
+
+# Run tests with coverage
+make test-coverage
+
+# Run specific package tests
+cd server && go test ./internal/auth
+```
+
+### Code Quality
+
+This project uses golangci-lint for code quality checks:
+
+```bash
+# Run linter
+make lint
+
+# Auto-fix some issues
+cd server && goimports -w .
+```
 
 ## Performance
 
@@ -148,6 +201,8 @@ server/
 - **Response Time**: <100ms for API calls
 - **WebSocket Latency**: <50ms for real-time messages
 - **Concurrent Users**: Tested up to 100+ users
+- **Docker Image**: <50MB optimized Alpine image
+- **Startup Time**: <2 seconds
 
 ## Security
 
@@ -156,6 +211,9 @@ server/
 - SQL injection protection
 - Input validation
 - CORS configuration for development
+- Automated security scanning with Trivy
+- Non-root Docker container
+- Regular dependency updates via Dependabot
 
 ## Next Steps
 
@@ -166,4 +224,8 @@ server/
 - [ ] Server roles and permissions
 - [ ] Message reactions
 - [ ] Direct messages
-- [ ] Mobile app support 
+- [ ] Mobile app support
+- [ ] Enhanced test coverage
+- [ ] Performance monitoring
+- [ ] Load balancing
+- [ ] Database migrations 
