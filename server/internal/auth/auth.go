@@ -23,7 +23,11 @@ type Claims struct {
 func NewService() *Service {
 	// In production, this should come from environment variables
 	secret := make([]byte, 32)
-	rand.Read(secret)
+	if _, err := rand.Read(secret); err != nil {
+		// In a real application, you might want to panic or handle this differently
+		// For now, we'll use a fallback approach
+		panic("failed to generate random secret: " + err.Error())
+	}
 	return &Service{
 		jwtSecret: secret,
 	}
@@ -84,4 +88,4 @@ func (s *Service) GenerateRandomString(length int) (string, error) {
 		return "", err
 	}
 	return base64.URLEncoding.EncodeToString(bytes), nil
-} 
+}

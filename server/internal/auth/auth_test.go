@@ -110,4 +110,4 @@ func TestGenerateRandomString(t *testing.T) {
 	if len(shortString) == 0 {
 		t.Error("Generated short random string should not be empty")
 	}
-} 
+}

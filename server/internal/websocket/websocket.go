@@ -20,10 +20,10 @@ var upgrader = websocket.Upgrader{
 
 // Message types
 const (
-	MessageTypeText     = "text"
-	MessageTypeJoin     = "join"
-	MessageTypeLeave    = "leave"
-	MessageTypeTyping   = "typing"
+	MessageTypeText       = "text"
+	MessageTypeJoin       = "join"
+	MessageTypeLeave      = "leave"
+	MessageTypeTyping     = "typing"
 	MessageTypeStopTyping = "stop_typing"
 )
 
@@ -132,9 +132,15 @@ func (c *Client) readPump() {
 	}()
 
 	c.conn.SetReadLimit(512) // 512 bytes max message size
-	c.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	if err := c.conn.SetReadDeadline(time.Now().Add(60 * time.Second)); err != nil {
+		log.Printf("Failed to set read deadline: %v", err)
+		return
+	}
 	c.conn.SetPongHandler(func(string) error {
-		c.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+		if err := c.conn.SetReadDeadline(time.Now().Add(60 * time.Second)); err != nil {
+			log.Printf("Failed to set read deadline in pong handler: %v", err)
+			return err
+		}
 		return nil
 	})
 
@@ -187,9 +193,14 @@ func (c *Client) writePump() {
 	for {
 		select {
 		case message, ok := <-c.send:
-			c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			if err := c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second)); err != nil {
+				log.Printf("Failed to set write deadline: %v", err)
+				return
+			}
 			if !ok {
-				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+				if err := c.conn.WriteMessage(websocket.CloseMessage, []byte{}); err != nil {
+					log.Printf("Failed to write close message: %v", err)
+				}
 				return
 			}
 
@@ -197,13 +208,19 @@ func (c *Client) writePump() {
 			if err != nil {
 				return
 			}
-			w.Write(message)
+			if _, err := w.Write(message); err != nil {
+				log.Printf("Failed to write message: %v", err)
+				return
+			}
 
 			if err := w.Close(); err != nil {
 				return
 			}
 		case <-ticker.C:
-			c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			if err := c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second)); err != nil {
+				log.Printf("Failed to set write deadline for ping: %v", err)
+				return
+			}
 			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
 			}
@@ -299,4 +316,4 @@ func Upgrade(w http.ResponseWriter, r *http.Request) (*websocket.Conn, error) {
 // BroadcastMessage sends a message to all clients subscribed to a channel
 func (h *Hub) BroadcastMessage(message *Message) {
 	h.broadcast <- message
-} 
+}

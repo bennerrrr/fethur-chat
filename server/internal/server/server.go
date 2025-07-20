@@ -23,7 +23,7 @@ type Server struct {
 
 func New(db *database.Database, auth *auth.Service) *Server {
 	hub := websocket.NewHub()
-	
+
 	server := &Server{
 		db:      db,
 		auth:    auth,
@@ -33,7 +33,7 @@ func New(db *database.Database, auth *auth.Service) *Server {
 	}
 
 	server.setupRoutes()
-	
+
 	// Start the WebSocket hub
 	go hub.Run()
 
@@ -57,16 +57,16 @@ func (s *Server) setupRoutes() {
 		{
 			// User routes
 			protected.GET("/user/profile", s.handleGetProfile)
-			
+
 			// Server routes
 			protected.POST("/servers", s.handleCreateServer)
 			protected.GET("/servers", s.handleGetServers)
 			protected.GET("/servers/:id", s.handleGetServer)
-			
+
 			// Channel routes
 			protected.POST("/servers/:id/channels", s.handleCreateChannel)
 			protected.GET("/servers/:id/channels", s.handleGetChannels)
-			
+
 			// Message routes
 			protected.GET("/channels/:channelId/messages", s.handleGetMessages)
 		}
@@ -74,7 +74,7 @@ func (s *Server) setupRoutes() {
 
 	// WebSocket endpoint
 	s.router.GET("/ws", s.authMiddleware(), s.handleWebSocket)
-	
+
 	// Health check
 	s.router.GET("/health", s.handleHealth)
 }
@@ -85,7 +85,7 @@ func (s *Server) Router() http.Handler {
 
 func (s *Server) handleHealth(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
-		"status": "healthy",
+		"status":  "healthy",
 		"message": "Fethur Server is running",
 	})
 }
@@ -491,10 +491,10 @@ func (s *Server) handleGetMessages(c *gin.Context) {
 		}
 
 		messages = append(messages, gin.H{
-			"id":        message.ID,
-			"content":   message.Content,
+			"id":         message.ID,
+			"content":    message.Content,
 			"created_at": message.CreatedAt,
-			"username":  message.Username,
+			"username":   message.Username,
 		})
 	}
 
@@ -514,7 +514,7 @@ func (s *Server) handleWebSocket(c *gin.Context) {
 
 	// Create new client
 	client := websocket.NewClient(conn, s.hub, userID, username)
-	
+
 	// Register client
 	s.clientsMux.Lock()
 	s.clients[userID] = client
@@ -567,4 +567,4 @@ func (s *Server) authMiddleware() gin.HandlerFunc {
 		c.Set("username", claims.Username)
 		c.Next()
 	}
-} 
+}

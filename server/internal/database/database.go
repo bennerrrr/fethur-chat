@@ -18,7 +18,7 @@ func Init() (*Database, error) {
 	if err := os.MkdirAll("./data", 0755); err != nil {
 		return nil, fmt.Errorf("failed to create data directory: %w", err)
 	}
-	
+
 	db, err := sql.Open("sqlite3", "./data/fethur.db")
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
@@ -106,4 +106,4 @@ func createTables(db *sql.DB) error {
 	}
 
 	return nil
-} 
+}

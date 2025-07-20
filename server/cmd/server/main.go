@@ -4,10 +4,11 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
-	"fethur/internal/server"
-	"fethur/internal/database"
 	"fethur/internal/auth"
+	"fethur/internal/database"
+	"fethur/internal/server"
 )
 
 func main() {
@@ -30,6 +31,15 @@ func main() {
 		port = "8080"
 	}
 
+	// Create HTTP server with timeouts
+	httpServer := &http.Server{
+		Addr:         ":" + port,
+		Handler:      srv.Router(),
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
 	log.Printf("Starting server on port %s", port)
-	log.Fatal(http.ListenAndServe(":"+port, srv.Router()))
-} 
+	log.Fatal(httpServer.ListenAndServe())
+}

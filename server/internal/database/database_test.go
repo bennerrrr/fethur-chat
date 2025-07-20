@@ -50,4 +50,4 @@ func TestDatabaseConnection(t *testing.T) {
 	if result != 1 {
 		t.Errorf("Expected result 1, got %d", result)
 	}
-} 
+}
