@@ -1,0 +1,17 @@
+# Go binaries
+server/fethur-server*
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Build artifacts
+server/coverage.out
+*.test
+
+# Dependencies
+server/vendor/
+
+# OS files
+.DS_Store
+Thumbs.db 

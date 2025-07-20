@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -13,7 +14,12 @@ type Database struct {
 }
 
 func Init() (*Database, error) {
-	db, err := sql.Open("sqlite3", "./discord_alternative.db")
+	// Ensure data directory exists
+	if err := os.MkdirAll("./data", 0755); err != nil {
+		return nil, fmt.Errorf("failed to create data directory: %w", err)
+	}
+	
+	db, err := sql.Open("sqlite3", "./data/fethur.db")
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
