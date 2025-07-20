@@ -44,6 +44,18 @@
 - Added `wget` to Alpine package installation
 - Updated Dockerfile: `RUN apk --no-cache add ca-certificates sqlite wget`
 
+### 5. **Linting Issues** ✅ FIXED
+**Problem**: golangci-lint was failing due to code quality issues
+- Missing error checking for function calls
+- Security vulnerability in HTTP server (no timeouts)
+- Code formatting issues
+
+**Solution**:
+- Added proper error handling for `rand.Read()` in auth.go
+- Fixed WebSocket connection error handling (SetReadDeadline, SetWriteDeadline, WriteMessage, w.Write)
+- Replaced `http.ListenAndServe` with proper HTTP server with timeouts
+- Ran `go fmt` to fix formatting issues
+
 ## Files Modified
 
 1. **`.github/workflows/ci.yml`**
@@ -65,7 +77,22 @@
    - Added automatic data directory creation
    - Added proper error handling for directory creation
 
-6. **`.trivyignore`**
+6. **`server/internal/auth/auth.go`**
+   - Added proper error handling for `rand.Read()`
+   - Added panic with descriptive error message for crypto failures
+
+7. **`server/internal/websocket/websocket.go`**
+   - Added error handling for `SetReadDeadline()` calls
+   - Added error handling for `SetWriteDeadline()` calls
+   - Added error handling for `WriteMessage()` calls
+   - Added error handling for `w.Write()` calls
+
+8. **`server/cmd/server/main.go`**
+   - Replaced `http.ListenAndServe` with proper HTTP server
+   - Added timeouts (ReadTimeout, WriteTimeout, IdleTimeout)
+   - Fixed security vulnerability (G114)
+
+9. **`.trivyignore`**
    - Added to ignore false positive security warnings
 
 ## Testing Results
@@ -75,20 +102,22 @@ All fixes have been tested locally:
 - ✅ Tests passing
 - ✅ Database initialization working
 - ✅ Code compiles without errors
+- ✅ golangci-lint passes with no issues
+- ✅ All formatting issues resolved
 
 ## Expected Outcomes
 
 After these fixes, the GitHub Actions should now:
 1. **Test job**: Pass all Go tests with proper version
-2. **Lint job**: Pass golangci-lint checks with correct Go version
+2. **Lint job**: Pass golangci-lint checks with correct Go version ✅
 3. **Build job**: Successfully build binaries for all platforms
-4. **Security job**: Pass Trivy security scans
+4. **Security job**: Pass Trivy security scans (pending investigation)
 5. **Docker job**: Successfully build and test Docker image with working health checks
 
 ## Next Steps
 
 1. Monitor the GitHub Actions runs to confirm all jobs pass
-2. If any issues persist, check the specific error messages in the Actions logs
+2. If Security Scan still fails, investigate specific Trivy findings
 3. Consider adding more comprehensive testing for the Docker container
 4. Add integration tests for the health endpoint
 
@@ -99,4 +128,7 @@ To prevent similar issues in the future:
 2. Test Docker builds locally before pushing
 3. Use environment-specific database paths
 4. Ensure all required dependencies are included in Docker images
-5. Add comprehensive CI/CD testing for all components 
+5. Add comprehensive CI/CD testing for all components
+6. Run `golangci-lint` locally before pushing changes
+7. Use proper error handling for all function calls that return errors
+8. Implement security best practices (timeouts, input validation, etc.) 
