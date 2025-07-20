@@ -124,6 +124,15 @@ jobs:
         with:
           scan-type: 'fs'
           scan-ref: '.'
+          format: 'table'
+          ignore-unfixed: true
+          severity: 'CRITICAL,HIGH'
+
+      - name: Run Trivy vulnerability scanner (SARIF format)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
           format: 'sarif'
           output: 'trivy-results.sarif'
           ignore-unfixed: true
@@ -131,9 +140,23 @@ jobs:
 
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        if: always() && github.event_name != 'pull_request'
         with:
           sarif_file: 'trivy-results.sarif'
+          category: 'Trivy Scan'
+        continue-on-error: true
+
+      - name: Display security scan results
+        if: always()
+        run: |
+          echo "=== Security Scan Results ==="
+          if [ -f "trivy-results.sarif" ]; then
+            echo "SARIF results file generated successfully"
+            echo "To enable GitHub Code Scanning, go to:"
+            echo "Settings > Security & analysis > Code scanning > Enable"
+          else
+            echo "No SARIF results file found"
+          fi
 
   docker:
     name: Docker Build
