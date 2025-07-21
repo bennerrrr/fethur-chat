@@ -9,6 +9,7 @@ Deep technical documentation for developers, architects, and technical contribut
 - **[WEBRTC_QUICK_REFERENCE.md](./WEBRTC_QUICK_REFERENCE.md)** - Quick reference guide for WebRTC integration, APIs, and troubleshooting
 
 ### Architecture & Extensibility
+- **[WEB_CLIENT_ARCHITECTURE.md](./WEB_CLIENT_ARCHITECTURE.md)** - Web client architecture options for self-hosted and cloud deployment models
 - **[PLUGIN_BOT_ARCHITECTURE_RESEARCH.md](./PLUGIN_BOT_ARCHITECTURE_RESEARCH.md)** - Extensive research and design for Discord-like plugin and bot support system
 - **[IMPLEMENTATION_GUIDE.md](./IMPLEMENTATION_GUIDE.md)** - General implementation guidelines and GitHub Actions setup
 
