@@ -16,6 +16,7 @@ Strategic planning, feature analysis, and project coordination documents.
 ### 🔧 [Technical](./technical/)
 Deep technical documentation for developers and architects.
 
+- **[WEB_CLIENT_ARCHITECTURE.md](./technical/WEB_CLIENT_ARCHITECTURE.md)** - Web client architecture for self-hosted and cloud deployment
 - **[WEBRTC_PERFORMANCE_IMPLEMENTATION_GUIDE.md](./technical/WEBRTC_PERFORMANCE_IMPLEMENTATION_GUIDE.md)** - WebRTC implementation and performance optimization
 - **[WEBRTC_QUICK_REFERENCE.md](./technical/WEBRTC_QUICK_REFERENCE.md)** - Quick reference for WebRTC integration
 - **[PLUGIN_BOT_ARCHITECTURE_RESEARCH.md](./technical/PLUGIN_BOT_ARCHITECTURE_RESEARCH.md)** - Plugin and bot system architecture
