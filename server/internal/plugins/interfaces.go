@@ -9,16 +9,16 @@ import (
 type Plugin interface {
 	// Name returns the unique name of the plugin
 	Name() string
-	
+
 	// Version returns the version of the plugin
 	Version() string
-	
+
 	// Initialize initializes the plugin with the given context and config
 	Initialize(ctx context.Context, config PluginConfig) error
-	
+
 	// Shutdown gracefully shuts down the plugin
 	Shutdown(ctx context.Context) error
-	
+
 	// Health returns the health status of the plugin
 	Health() PluginHealth
 }
@@ -26,10 +26,10 @@ type Plugin interface {
 // MessageProcessor interface for plugins that process messages
 type MessageProcessor interface {
 	Plugin
-	
+
 	// ProcessMessage processes an incoming message and returns the modified message
 	ProcessMessage(ctx context.Context, msg *Message) (*Message, error)
-	
+
 	// Priority returns the execution priority (lower numbers execute first)
 	Priority() int
 }
@@ -37,10 +37,10 @@ type MessageProcessor interface {
 // CommandHandler interface for plugins that handle slash commands
 type CommandHandler interface {
 	Plugin
-	
+
 	// HandleCommand handles a command and returns a response
 	HandleCommand(ctx context.Context, cmd *Command) (*Response, error)
-	
+
 	// Commands returns the list of commands this plugin handles
 	Commands() []CommandDefinition
 }
@@ -48,10 +48,10 @@ type CommandHandler interface {
 // EventListener interface for plugins that listen to events
 type EventListener interface {
 	Plugin
-	
+
 	// HandleEvent handles an event
 	HandleEvent(ctx context.Context, event Event) error
-	
+
 	// EventTypes returns the list of event types this plugin listens to
 	EventTypes() []EventType
 }
@@ -59,10 +59,10 @@ type EventListener interface {
 // APIExtension interface for plugins that add HTTP endpoints
 type APIExtension interface {
 	Plugin
-	
+
 	// BasePath returns the base path for the extension's routes
 	BasePath() string
-	
+
 	// RegisterRoutes registers the extension's routes with the given router
 	RegisterRoutes(router Router) error
 }
@@ -73,10 +73,10 @@ type Bot interface {
 	MessageProcessor
 	CommandHandler
 	EventListener
-	
+
 	// GetInfo returns bot information
 	GetInfo() BotInfo
-	
+
 	// HandleDirectMessage handles a direct message to the bot
 	HandleDirectMessage(ctx context.Context, msg *DirectMessage) error
 }
@@ -97,17 +97,17 @@ const (
 
 // PluginManifest contains metadata about a plugin
 type PluginManifest struct {
-	Name         string       `json:"name" yaml:"name"`
-	Version      string       `json:"version" yaml:"version"`
-	Description  string       `json:"description" yaml:"description"`
-	Author       string       `json:"author" yaml:"author"`
-	License      string       `json:"license" yaml:"license"`
-	Permissions  []Permission `json:"permissions" yaml:"permissions"`
-	Dependencies []string     `json:"dependencies" yaml:"dependencies"`
-	EntryPoint   string       `json:"entry_point" yaml:"entry_point"`
-	Resources    ResourceLimits `json:"resources" yaml:"resources"`
+	Name         string              `json:"name" yaml:"name"`
+	Version      string              `json:"version" yaml:"version"`
+	Description  string              `json:"description" yaml:"description"`
+	Author       string              `json:"author" yaml:"author"`
+	License      string              `json:"license" yaml:"license"`
+	Permissions  []Permission        `json:"permissions" yaml:"permissions"`
+	Dependencies []string            `json:"dependencies" yaml:"dependencies"`
+	EntryPoint   string              `json:"entry_point" yaml:"entry_point"`
+	Resources    ResourceLimits      `json:"resources" yaml:"resources"`
 	Commands     []CommandDefinition `json:"commands" yaml:"commands"`
-	Events       []EventType  `json:"events" yaml:"events"`
+	Events       []EventType         `json:"events" yaml:"events"`
 }
 
 // ResourceLimits defines resource constraints for a plugin
@@ -130,8 +130,8 @@ type PluginConfig struct {
 
 // PluginHealth represents the health status of a plugin
 type PluginHealth struct {
-	Status  HealthStatus `json:"status"`
-	Message string       `json:"message"`
+	Status  HealthStatus           `json:"status"`
+	Message string                 `json:"message"`
 	Details map[string]interface{} `json:"details,omitempty"`
 }
 
@@ -147,15 +147,15 @@ const (
 
 // Message represents a chat message
 type Message struct {
-	ID        string    `json:"id"`
-	Content   string    `json:"content"`
-	UserID    string    `json:"user_id"`
-	Username  string    `json:"username"`
-	ChannelID string    `json:"channel_id"`
-	ServerID  string    `json:"server_id"`
-	Timestamp time.Time `json:"timestamp"`
-	Edited    bool      `json:"edited"`
-	Type      MessageType `json:"type"`
+	ID        string                 `json:"id"`
+	Content   string                 `json:"content"`
+	UserID    string                 `json:"user_id"`
+	Username  string                 `json:"username"`
+	ChannelID string                 `json:"channel_id"`
+	ServerID  string                 `json:"server_id"`
+	Timestamp time.Time              `json:"timestamp"`
+	Edited    bool                   `json:"edited"`
+	Type      MessageType            `json:"type"`
 	Metadata  map[string]interface{} `json:"metadata,omitempty"`
 }
 
@@ -182,11 +182,11 @@ type Command struct {
 
 // CommandDefinition defines a command that a plugin can handle
 type CommandDefinition struct {
-	Name        string                    `json:"name" yaml:"name"`
-	Description string                    `json:"description" yaml:"description"`
-	Usage       string                    `json:"usage" yaml:"usage"`
-	Options     []CommandOption           `json:"options" yaml:"options"`
-	Permissions []Permission              `json:"permissions" yaml:"permissions"`
+	Name        string          `json:"name" yaml:"name"`
+	Description string          `json:"description" yaml:"description"`
+	Usage       string          `json:"usage" yaml:"usage"`
+	Options     []CommandOption `json:"options" yaml:"options"`
+	Permissions []Permission    `json:"permissions" yaml:"permissions"`
 }
 
 // CommandOption defines an option for a command
@@ -229,12 +229,12 @@ const (
 
 // Embed represents a rich embed in a response
 type Embed struct {
-	Title       string      `json:"title,omitempty"`
-	Description string      `json:"description,omitempty"`
-	Color       int         `json:"color,omitempty"`
+	Title       string       `json:"title,omitempty"`
+	Description string       `json:"description,omitempty"`
+	Color       int          `json:"color,omitempty"`
 	Fields      []EmbedField `json:"fields,omitempty"`
 	Footer      *EmbedFooter `json:"footer,omitempty"`
-	Timestamp   *time.Time  `json:"timestamp,omitempty"`
+	Timestamp   *time.Time   `json:"timestamp,omitempty"`
 }
 
 // EmbedField represents a field in an embed
@@ -300,8 +300,8 @@ type BotInfo struct {
 type BotStatus string
 
 const (
-	BotStatusOnline    BotStatus = "online"
-	BotStatusOffline   BotStatus = "offline"
+	BotStatusOnline      BotStatus = "online"
+	BotStatusOffline     BotStatus = "offline"
 	BotStatusMaintenance BotStatus = "maintenance"
 )
 

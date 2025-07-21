@@ -3,6 +3,7 @@ package plugins
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"runtime"
 	"sync"
 	"time"
@@ -25,7 +26,7 @@ func NewEventBus() *EventBus {
 func (eb *EventBus) Subscribe(eventType EventType, handler func(Event)) {
 	eb.mu.Lock()
 	defer eb.mu.Unlock()
-	
+
 	if eb.subscribers[eventType] == nil {
 		eb.subscribers[eventType] = make([]func(Event), 0)
 	}
@@ -37,7 +38,7 @@ func (eb *EventBus) Emit(event Event) {
 	eb.mu.RLock()
 	handlers := eb.subscribers[event.Type]
 	eb.mu.RUnlock()
-	
+
 	for _, handler := range handlers {
 		go handler(event)
 	}
@@ -52,11 +53,11 @@ type ResourceMonitor struct {
 
 // PluginUsage tracks resource usage for a plugin
 type PluginUsage struct {
-	MemoryMB     float64   `json:"memory_mb"`
-	CPUPercent   float64   `json:"cpu_percent"`
-	Goroutines   int       `json:"goroutines"`
-	Connections  int       `json:"connections"`
-	LastUpdated  time.Time `json:"last_updated"`
+	MemoryMB    float64   `json:"memory_mb"`
+	CPUPercent  float64   `json:"cpu_percent"`
+	Goroutines  int       `json:"goroutines"`
+	Connections int       `json:"connections"`
+	LastUpdated time.Time `json:"last_updated"`
 }
 
 // NewResourceMonitor creates a new resource monitor
@@ -71,7 +72,7 @@ func NewResourceMonitor() *ResourceMonitor {
 func (rm *ResourceMonitor) RegisterPlugin(name string, limits ResourceLimits) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
-	
+
 	rm.plugins[name] = &PluginUsage{
 		LastUpdated: time.Now(),
 	}
@@ -82,7 +83,7 @@ func (rm *ResourceMonitor) RegisterPlugin(name string, limits ResourceLimits) {
 func (rm *ResourceMonitor) UnregisterPlugin(name string) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
-	
+
 	delete(rm.plugins, name)
 	delete(rm.limits, name)
 }
@@ -91,7 +92,7 @@ func (rm *ResourceMonitor) UnregisterPlugin(name string) {
 func (rm *ResourceMonitor) UpdateUsage(name string, usage PluginUsage) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
-	
+
 	if _, exists := rm.plugins[name]; exists {
 		usage.LastUpdated = time.Now()
 		rm.plugins[name] = &usage
@@ -102,22 +103,22 @@ func (rm *ResourceMonitor) UpdateUsage(name string, usage PluginUsage) {
 func (rm *ResourceMonitor) GetUsage(name string) (*PluginUsage, bool) {
 	rm.mu.RLock()
 	defer rm.mu.RUnlock()
-	
+
 	usage, exists := rm.plugins[name]
 	if !exists {
 		return nil, false
 	}
-	
+
 	// Update with current Go runtime stats
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
-	
-	// This is a simplified approximation - in reality you'd need 
+
+	// This is a simplified approximation - in reality you'd need
 	// per-plugin memory tracking
 	usage.MemoryMB = float64(m.Alloc) / 1024 / 1024
 	usage.Goroutines = runtime.NumGoroutine()
 	usage.LastUpdated = time.Now()
-	
+
 	return usage, true
 }
 
@@ -125,37 +126,37 @@ func (rm *ResourceMonitor) GetUsage(name string) (*PluginUsage, bool) {
 func (rm *ResourceMonitor) CheckLimits(name string) []string {
 	rm.mu.RLock()
 	defer rm.mu.RUnlock()
-	
+
 	usage, exists := rm.plugins[name]
 	if !exists {
 		return nil
 	}
-	
+
 	limits, exists := rm.limits[name]
 	if !exists {
 		return nil
 	}
-	
+
 	var violations []string
-	
+
 	if usage.MemoryMB > float64(limits.MaxMemoryMB) {
-		violations = append(violations, 
-			fmt.Sprintf("Memory usage %.2f MB exceeds limit %d MB", 
+		violations = append(violations,
+			fmt.Sprintf("Memory usage %.2f MB exceeds limit %d MB",
 				usage.MemoryMB, limits.MaxMemoryMB))
 	}
-	
+
 	if usage.CPUPercent > limits.MaxCPUPercent {
 		violations = append(violations,
 			fmt.Sprintf("CPU usage %.2f%% exceeds limit %.2f%%",
 				usage.CPUPercent, limits.MaxCPUPercent))
 	}
-	
+
 	if usage.Goroutines > limits.MaxGoroutines {
 		violations = append(violations,
 			fmt.Sprintf("Goroutine count %d exceeds limit %d",
 				usage.Goroutines, limits.MaxGoroutines))
 	}
-	
+
 	return violations
 }
 
@@ -211,12 +212,12 @@ func (pd *PluginDatabase) Query(query string, args ...interface{}) (Rows, error)
 	if !pd.hasPermission(PermissionAccessDB) {
 		return nil, fmt.Errorf("plugin does not have database access permission")
 	}
-	
+
 	// Additional query validation could be added here
 	if err := pd.validateQuery(query); err != nil {
 		return nil, fmt.Errorf("query validation failed: %w", err)
 	}
-	
+
 	return pd.base.Query(query, args...)
 }
 
@@ -224,11 +225,11 @@ func (pd *PluginDatabase) QueryRow(query string, args ...interface{}) Row {
 	if !pd.hasPermission(PermissionAccessDB) {
 		return &errorRow{fmt.Errorf("plugin does not have database access permission")}
 	}
-	
+
 	if err := pd.validateQuery(query); err != nil {
 		return &errorRow{fmt.Errorf("query validation failed: %w", err)}
 	}
-	
+
 	return pd.base.QueryRow(query, args...)
 }
 
@@ -236,11 +237,11 @@ func (pd *PluginDatabase) Exec(query string, args ...interface{}) (Result, error
 	if !pd.hasPermission(PermissionAccessDB) {
 		return nil, fmt.Errorf("plugin does not have database access permission")
 	}
-	
+
 	if err := pd.validateQuery(query); err != nil {
 		return nil, fmt.Errorf("query validation failed: %w", err)
 	}
-	
+
 	return pd.base.Exec(query, args...)
 }
 
@@ -263,7 +264,7 @@ func (pd *PluginDatabase) validateQuery(query string) error {
 		"ALTER TABLE",
 		"CREATE TABLE",
 	}
-	
+
 	queryUpper := query
 	for _, pattern := range dangerousPatterns {
 		if len(queryUpper) >= len(pattern) {
@@ -274,7 +275,7 @@ func (pd *PluginDatabase) validateQuery(query string) error {
 			}
 		}
 	}
-	
+
 	return nil
 }
 
@@ -298,20 +299,20 @@ type PluginContext struct {
 // NewPluginContext creates a new plugin execution context
 func NewPluginContext(parent context.Context, pluginName string, limits ResourceLimits) *PluginContext {
 	ctx, cancel := context.WithTimeout(parent, limits.MaxExecutionTime)
-	
+
 	pc := &PluginContext{
 		Context:    ctx,
 		pluginName: pluginName,
 		limits:     limits,
 		startTime:  time.Now(),
 	}
-	
+
 	// Set up automatic cancellation if execution time exceeds limit
 	go func() {
 		<-time.After(limits.MaxExecutionTime)
 		cancel()
 	}()
-	
+
 	return pc
 }
 
@@ -353,17 +354,17 @@ func (iv *InputValidator) ValidateMessageContent(content string) error {
 	if len(content) == 0 {
 		return fmt.Errorf("message content cannot be empty")
 	}
-	
+
 	if len(content) > iv.maxLength {
 		return fmt.Errorf("message content too long (max %d characters)", iv.maxLength)
 	}
-	
+
 	// Check for potentially malicious content
 	// This is a basic implementation - more sophisticated validation could be added
 	if containsScriptTags(content) {
 		return fmt.Errorf("message content contains script tags")
 	}
-	
+
 	return nil
 }
 
@@ -372,7 +373,7 @@ func (iv *InputValidator) ValidateCommandInput(input string) error {
 	if len(input) > 1024 {
 		return fmt.Errorf("command input too long (max 1024 characters)")
 	}
-	
+
 	// Check for command injection patterns
 	dangerousPatterns := []string{";", "&&", "||", "|", "`", "$"}
 	for _, pattern := range dangerousPatterns {
@@ -384,7 +385,7 @@ func (iv *InputValidator) ValidateCommandInput(input string) error {
 			}
 		}
 	}
-	
+
 	return nil
 }
 
@@ -392,7 +393,7 @@ func containsScriptTags(content string) bool {
 	// Simple check for script tags - in production, you'd want more sophisticated checking
 	scriptPatterns := []string{"<script", "</script>", "javascript:", "onload=", "onerror="}
 	contentLower := content
-	
+
 	for _, pattern := range scriptPatterns {
 		for i := 0; i <= len(contentLower)-len(pattern); i++ {
 			match := true
@@ -407,7 +408,7 @@ func containsScriptTags(content string) bool {
 			}
 		}
 	}
-	
+
 	return false
 }
 
@@ -428,11 +429,11 @@ func NewPluginRegistry() *PluginRegistry {
 func (pr *PluginRegistry) Register(manifest *PluginManifest) error {
 	pr.mu.Lock()
 	defer pr.mu.Unlock()
-	
+
 	if _, exists := pr.plugins[manifest.Name]; exists {
 		return fmt.Errorf("plugin %s already registered", manifest.Name)
 	}
-	
+
 	pr.plugins[manifest.Name] = manifest
 	return nil
 }
@@ -441,7 +442,7 @@ func (pr *PluginRegistry) Register(manifest *PluginManifest) error {
 func (pr *PluginRegistry) Get(name string) (*PluginManifest, bool) {
 	pr.mu.RLock()
 	defer pr.mu.RUnlock()
-	
+
 	manifest, exists := pr.plugins[name]
 	return manifest, exists
 }
@@ -450,12 +451,12 @@ func (pr *PluginRegistry) Get(name string) (*PluginManifest, bool) {
 func (pr *PluginRegistry) List() []*PluginManifest {
 	pr.mu.RLock()
 	defer pr.mu.RUnlock()
-	
+
 	manifests := make([]*PluginManifest, 0, len(pr.plugins))
 	for _, manifest := range pr.plugins {
 		manifests = append(manifests, manifest)
 	}
-	
+
 	return manifests
 }
 
@@ -463,11 +464,11 @@ func (pr *PluginRegistry) List() []*PluginManifest {
 func (pr *PluginRegistry) Unregister(name string) error {
 	pr.mu.Lock()
 	defer pr.mu.Unlock()
-	
+
 	if _, exists := pr.plugins[name]; !exists {
 		return fmt.Errorf("plugin %s not found", name)
 	}
-	
+
 	delete(pr.plugins, name)
 	return nil
 }

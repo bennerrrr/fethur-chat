@@ -3,7 +3,6 @@ package plugins
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"sync"
@@ -14,37 +13,37 @@ import (
 
 // Manager handles the lifecycle and management of plugins
 type Manager struct {
-	plugins      map[string]Plugin
-	manifests    map[string]*PluginManifest
-	security     *SecurityManager
-	monitor      *ResourceMonitor
-	eventBus     *EventBus
-	config       *Config
-	logger       Logger
-	database     Database
-	mu           sync.RWMutex
-	ctx          context.Context
-	cancel       context.CancelFunc
+	plugins   map[string]Plugin
+	manifests map[string]*PluginManifest
+	security  *SecurityManager
+	monitor   *ResourceMonitor
+	eventBus  *EventBus
+	config    *Config
+	logger    Logger
+	database  Database
+	mu        sync.RWMutex
+	ctx       context.Context
+	cancel    context.CancelFunc
 }
 
 // Config contains configuration for the plugin manager
 type Config struct {
-	PluginDir        string         `json:"plugin_dir" yaml:"plugin_dir"`
-	MaxPlugins       int            `json:"max_plugins" yaml:"max_plugins"`
-	DefaultLimits    ResourceLimits `json:"default_limits" yaml:"default_limits"`
-	EnableSandbox    bool           `json:"enable_sandbox" yaml:"enable_sandbox"`
-	SecurityPolicy   string         `json:"security_policy" yaml:"security_policy"`
-	UpdateInterval   time.Duration  `json:"update_interval" yaml:"update_interval"`
+	PluginDir      string         `json:"plugin_dir" yaml:"plugin_dir"`
+	MaxPlugins     int            `json:"max_plugins" yaml:"max_plugins"`
+	DefaultLimits  ResourceLimits `json:"default_limits" yaml:"default_limits"`
+	EnableSandbox  bool           `json:"enable_sandbox" yaml:"enable_sandbox"`
+	SecurityPolicy string         `json:"security_policy" yaml:"security_policy"`
+	UpdateInterval time.Duration  `json:"update_interval" yaml:"update_interval"`
 }
 
 // NewManager creates a new plugin manager
 func NewManager(config *Config, logger Logger, database Database) (*Manager, error) {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	eventBus := NewEventBus()
 	security := NewSecurityManager(config.SecurityPolicy)
 	monitor := NewResourceMonitor()
-	
+
 	manager := &Manager{
 		plugins:   make(map[string]Plugin),
 		manifests: make(map[string]*PluginManifest),
@@ -57,10 +56,10 @@ func NewManager(config *Config, logger Logger, database Database) (*Manager, err
 		ctx:       ctx,
 		cancel:    cancel,
 	}
-	
+
 	// Start background monitoring
 	go manager.startMonitoring()
-	
+
 	return manager, nil
 }
 
@@ -68,31 +67,31 @@ func NewManager(config *Config, logger Logger, database Database) (*Manager, err
 func (m *Manager) LoadPlugin(pluginPath string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	m.logger.Info("Loading plugin", "path", pluginPath)
-	
+
 	// Load and validate manifest
 	manifest, err := m.loadManifest(pluginPath)
 	if err != nil {
 		return fmt.Errorf("failed to load manifest: %w", err)
 	}
-	
+
 	// Security check
 	if err := m.security.ValidatePlugin(manifest); err != nil {
 		return fmt.Errorf("security validation failed: %w", err)
 	}
-	
+
 	// Check if plugin already loaded
 	if _, exists := m.plugins[manifest.Name]; exists {
 		return fmt.Errorf("plugin %s already loaded", manifest.Name)
 	}
-	
+
 	// Load plugin implementation
 	plugin, err := m.loadPluginImplementation(pluginPath, manifest)
 	if err != nil {
 		return fmt.Errorf("failed to load plugin implementation: %w", err)
 	}
-	
+
 	// Initialize plugin
 	config := PluginConfig{
 		Data:        make(map[string]interface{}),
@@ -100,21 +99,21 @@ func (m *Manager) LoadPlugin(pluginPath string) error {
 		Logger:      NewPluginLogger(m.logger, manifest.Name),
 		Database:    NewPluginDatabase(m.database, manifest.Permissions),
 	}
-	
+
 	ctx, cancel := context.WithTimeout(m.ctx, 30*time.Second)
 	defer cancel()
-	
+
 	if err := plugin.Initialize(ctx, config); err != nil {
 		return fmt.Errorf("failed to initialize plugin: %w", err)
 	}
-	
+
 	// Register with resource monitor
 	m.monitor.RegisterPlugin(manifest.Name, manifest.Resources)
-	
+
 	// Store plugin and manifest
 	m.plugins[manifest.Name] = plugin
 	m.manifests[manifest.Name] = manifest
-	
+
 	// Emit event
 	m.eventBus.Emit(Event{
 		Type: EventPluginLoaded,
@@ -124,7 +123,7 @@ func (m *Manager) LoadPlugin(pluginPath string) error {
 		},
 		Timestamp: time.Now(),
 	})
-	
+
 	m.logger.Info("Plugin loaded successfully", "name", manifest.Name, "version", manifest.Version)
 	return nil
 }
@@ -133,29 +132,29 @@ func (m *Manager) LoadPlugin(pluginPath string) error {
 func (m *Manager) UnloadPlugin(name string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	plugin, exists := m.plugins[name]
 	if !exists {
 		return fmt.Errorf("plugin %s not found", name)
 	}
-	
+
 	m.logger.Info("Unloading plugin", "name", name)
-	
+
 	// Shutdown plugin
 	ctx, cancel := context.WithTimeout(m.ctx, 30*time.Second)
 	defer cancel()
-	
+
 	if err := plugin.Shutdown(ctx); err != nil {
 		m.logger.Warn("Error during plugin shutdown", "name", name, "error", err)
 	}
-	
+
 	// Unregister from monitor
 	m.monitor.UnregisterPlugin(name)
-	
+
 	// Remove from maps
 	delete(m.plugins, name)
 	delete(m.manifests, name)
-	
+
 	// Emit event
 	m.eventBus.Emit(Event{
 		Type: EventPluginUnloaded,
@@ -164,7 +163,7 @@ func (m *Manager) UnloadPlugin(name string) error {
 		},
 		Timestamp: time.Now(),
 	})
-	
+
 	m.logger.Info("Plugin unloaded successfully", "name", name)
 	return nil
 }
@@ -173,7 +172,7 @@ func (m *Manager) UnloadPlugin(name string) error {
 func (m *Manager) GetPlugin(name string) (Plugin, bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	
+
 	plugin, exists := m.plugins[name]
 	return plugin, exists
 }
@@ -182,12 +181,12 @@ func (m *Manager) GetPlugin(name string) (Plugin, bool) {
 func (m *Manager) ListPlugins() []PluginInfo {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	
+
 	var plugins []PluginInfo
 	for name, manifest := range m.manifests {
 		plugin := m.plugins[name]
 		health := plugin.Health()
-		
+
 		info := PluginInfo{
 			Name:        manifest.Name,
 			Version:     manifest.Version,
@@ -200,7 +199,7 @@ func (m *Manager) ListPlugins() []PluginInfo {
 		}
 		plugins = append(plugins, info)
 	}
-	
+
 	return plugins
 }
 
@@ -209,22 +208,19 @@ func (m *Manager) ProcessMessage(ctx context.Context, msg *Message) (*Message, e
 	m.mu.RLock()
 	processors := m.getMessageProcessors()
 	m.mu.RUnlock()
-	
-	// Sort by priority
-	sortByPriority(processors)
-	
+
 	result := msg
 	for _, processor := range processors {
 		processed, err := processor.ProcessMessage(ctx, result)
 		if err != nil {
-			m.logger.Error("Message processing error", 
-				"plugin", processor.Name(), 
+			m.logger.Error("Message processing error",
+				"plugin", processor.Name(),
 				"error", err)
 			continue
 		}
 		result = processed
 	}
-	
+
 	return result, nil
 }
 
@@ -232,7 +228,7 @@ func (m *Manager) ProcessMessage(ctx context.Context, msg *Message) (*Message, e
 func (m *Manager) HandleCommand(ctx context.Context, cmd *Command) (*Response, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	
+
 	for _, plugin := range m.plugins {
 		if handler, ok := plugin.(CommandHandler); ok {
 			for _, cmdDef := range handler.Commands() {
@@ -241,17 +237,17 @@ func (m *Manager) HandleCommand(ctx context.Context, cmd *Command) (*Response, e
 					if err := m.security.CheckCommandPermissions(cmd, cmdDef.Permissions); err != nil {
 						return nil, fmt.Errorf("permission denied: %w", err)
 					}
-					
+
 					// Execute command with timeout
 					ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 					defer cancel()
-					
+
 					return handler.HandleCommand(ctx, cmd)
 				}
 			}
 		}
 	}
-	
+
 	return nil, fmt.Errorf("unknown command: %s", cmd.Name)
 }
 
@@ -260,15 +256,15 @@ func (m *Manager) EmitEvent(ctx context.Context, event Event) {
 	m.mu.RLock()
 	listeners := m.getEventListeners(event.Type)
 	m.mu.RUnlock()
-	
+
 	for _, listener := range listeners {
 		go func(l EventListener) {
 			ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 			defer cancel()
-			
+
 			if err := l.HandleEvent(ctx, event); err != nil {
-				m.logger.Error("Event handling error", 
-					"plugin", l.Name(), 
+				m.logger.Error("Event handling error",
+					"plugin", l.Name(),
 					"event", event.Type,
 					"error", err)
 			}
@@ -279,21 +275,21 @@ func (m *Manager) EmitEvent(ctx context.Context, event Event) {
 // Shutdown gracefully shuts down all plugins
 func (m *Manager) Shutdown(ctx context.Context) error {
 	m.cancel()
-	
+
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	var errors []error
 	for name, plugin := range m.plugins {
 		if err := plugin.Shutdown(ctx); err != nil {
 			errors = append(errors, fmt.Errorf("failed to shutdown plugin %s: %w", name, err))
 		}
 	}
-	
+
 	if len(errors) > 0 {
 		return fmt.Errorf("shutdown errors: %v", errors)
 	}
-	
+
 	return nil
 }
 
@@ -304,22 +300,22 @@ func (m *Manager) loadManifest(pluginPath string) (*PluginManifest, error) {
 	if _, err := os.Stat(manifestPath); os.IsNotExist(err) {
 		manifestPath = filepath.Join(pluginPath, "plugin.yml")
 	}
-	
+
 	data, err := os.ReadFile(manifestPath)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	var manifest PluginManifest
 	if err := yaml.Unmarshal(data, &manifest); err != nil {
 		return nil, err
 	}
-	
+
 	// Set default resource limits if not specified
 	if manifest.Resources.MaxMemoryMB == 0 {
 		manifest.Resources = m.config.DefaultLimits
 	}
-	
+
 	return &manifest, nil
 }
 
@@ -329,7 +325,7 @@ func (m *Manager) loadPluginImplementation(pluginPath string, manifest *PluginMa
 	// 1. Go's plugin package (for .so files)
 	// 2. WebAssembly runtime (for .wasm files)
 	// 3. Process spawning (for executable plugins)
-	
+
 	// This would be replaced with actual plugin loading logic
 	return nil, fmt.Errorf("plugin loading not yet implemented")
 }
@@ -363,7 +359,7 @@ func (m *Manager) getPluginStatus(name string) PluginStatus {
 	// Check if plugin is responsive
 	plugin := m.plugins[name]
 	health := plugin.Health()
-	
+
 	switch health.Status {
 	case HealthStatusHealthy:
 		return PluginStatusRunning
@@ -379,7 +375,7 @@ func (m *Manager) getPluginStatus(name string) PluginStatus {
 func (m *Manager) startMonitoring() {
 	ticker := time.NewTicker(m.config.UpdateInterval)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-m.ctx.Done():
@@ -397,12 +393,12 @@ func (m *Manager) performHealthChecks() {
 		plugins[name] = plugin
 	}
 	m.mu.RUnlock()
-	
+
 	for name, plugin := range plugins {
 		health := plugin.Health()
 		if health.Status == HealthStatusUnhealthy {
-			m.logger.Warn("Plugin health check failed", 
-				"name", name, 
+			m.logger.Warn("Plugin health check failed",
+				"name", name,
 				"status", health.Status,
 				"message", health.Message)
 		}
@@ -440,20 +436,3 @@ const (
 	EventPluginUnloaded EventType = "plugin.unloaded"
 	EventPluginError    EventType = "plugin.error"
 )
-
-type processorWithPriority struct {
-	MessageProcessor
-	priority int
-}
-
-func sortByPriority(processors []MessageProcessor) {
-	// Simple bubble sort by priority (lower numbers first)
-	n := len(processors)
-	for i := 0; i < n-1; i++ {
-		for j := 0; j < n-i-1; j++ {
-			if processors[j].Priority() > processors[j+1].Priority() {
-				processors[j], processors[j+1] = processors[j+1], processors[j]
-			}
-		}
-	}
-}

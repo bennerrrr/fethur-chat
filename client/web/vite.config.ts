@@ -11,15 +11,7 @@ export default defineConfig({
 	build: {
 		target: 'es2022',
 		minify: 'esbuild',
-		sourcemap: true,
-		rollupOptions: {
-			output: {
-				manualChunks: {
-					vendor: ['svelte', '@sveltejs/kit'],
-					ui: ['lucide-svelte', 'clsx', 'tailwind-merge']
-				}
-			}
-		}
+		sourcemap: true
 	},
 	optimizeDeps: {
 		include: ['socket.io-client', 'lucide-svelte']
