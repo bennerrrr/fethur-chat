@@ -7,6 +7,10 @@
 	export let loading = false;
 	export let type: 'button' | 'submit' | 'reset' = 'button';
 	export let href: string | undefined = undefined;
+	
+	// Allow additional CSS classes
+	let className = '';
+	export { className as class };
 
 	const baseClasses = 'btn';
 	
@@ -27,7 +31,8 @@
 		baseClasses,
 		variants[variant],
 		sizes[size],
-		(disabled || loading) && 'opacity-50 cursor-not-allowed'
+		(disabled || loading) && 'opacity-50 cursor-not-allowed',
+		className
 	);
 </script>
 

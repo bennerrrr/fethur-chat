@@ -80,7 +80,7 @@
 							</div>
 							<p class="ml-16 text-lg leading-6 font-medium text-secondary-900 dark:text-white">Lightning Fast</p>
 							<p class="mt-2 ml-16 text-base text-secondary-500 dark:text-secondary-300">
-								< 2 second load time, < 500KB bundle size. Built for performance from the ground up.
+								&lt; 2 second load time, &lt; 500KB bundle size. Built for performance from the ground up.
 							</p>
 						</div>
 
@@ -120,7 +120,7 @@
 							</div>
 							<p class="ml-16 text-lg leading-6 font-medium text-secondary-900 dark:text-white">Lightweight</p>
 							<p class="mt-2 ml-16 text-base text-secondary-500 dark:text-secondary-300">
-								Uses < 50MB RAM and starts in < 2 seconds. Efficient by design.
+								Uses &lt; 50MB RAM and starts in &lt; 2 seconds. Efficient by design.
 							</p>
 						</div>
 

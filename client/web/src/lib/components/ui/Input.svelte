@@ -11,7 +11,7 @@
 	export let label = '';
 	export let id = '';
 	export let name = '';
-	export let autocomplete = '';
+	export let autocomplete: string = '';
 	export let maxlength: number | undefined = undefined;
 	export let minlength: number | undefined = undefined;
 
@@ -45,7 +45,7 @@
 			{disabled}
 			{readonly}
 			{required}
-			{autocomplete}
+			autocomplete={autocomplete || undefined}
 			{maxlength}
 			{minlength}
 			bind:value

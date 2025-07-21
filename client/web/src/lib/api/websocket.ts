@@ -24,7 +24,7 @@ class WebSocketClient {
 	private heartbeatInterval: number;
 	private heartbeatTimer: NodeJS.Timeout | null = null;
 	private reconnectTimer: NodeJS.Timeout | null = null;
-	private isConnecting: boolean = false;
+	private isConnectingState: boolean = false;
 	private isManualDisconnect: boolean = false;
 
 	constructor(options: WebSocketOptions = {}) {
@@ -49,13 +49,13 @@ class WebSocketClient {
 
 		return new Promise((resolve, reject) => {
 			try {
-				this.isConnecting = true;
+				this.isConnectingState = true;
 				const wsUrl = `${this.url}/ws?token=${encodeURIComponent(token)}`;
 				this.ws = new WebSocket(wsUrl);
 
 				this.ws.onopen = () => {
 					console.log('WebSocket connected');
-					this.isConnecting = false;
+					this.isConnectingState = false;
 					this.reconnectAttempts = 0;
 					this.startHeartbeat();
 					this.emit('connected', { timestamp: new Date() });
@@ -68,7 +68,7 @@ class WebSocketClient {
 
 				this.ws.onclose = (event) => {
 					console.log('WebSocket disconnected:', event.code, event.reason);
-					this.isConnecting = false;
+					this.isConnectingState = false;
 					this.stopHeartbeat();
 					this.emit('disconnected', { 
 						code: event.code, 
@@ -83,13 +83,13 @@ class WebSocketClient {
 
 				this.ws.onerror = (error) => {
 					console.error('WebSocket error:', error);
-					this.isConnecting = false;
+					this.isConnectingState = false;
 					this.emit('error', { error, timestamp: new Date() });
 					reject(new Error('WebSocket connection failed'));
 				};
 
 			} catch (error) {
-				this.isConnecting = false;
+				this.isConnectingState = false;
 				reject(error);
 			}
 		});
@@ -136,7 +136,7 @@ class WebSocketClient {
 		}, delay);
 	}
 
-	private handleMessage(event: MessageEvent): void {
+	private handleMessage(event: any): void {
 		try {
 			const data = JSON.parse(event.data);
 			
@@ -282,7 +282,7 @@ class WebSocketClient {
 	}
 
 	isConnecting(): boolean {
-		return this.isConnecting;
+		return this.isConnectingState;
 	}
 
 	getReadyState(): number | null {
