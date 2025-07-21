@@ -191,12 +191,25 @@ This project uses GitHub Actions for automated testing and deployment:
 
 MIT License - see LICENSE file for details
 
+## Documentation
+
+📚 **Comprehensive Documentation**: Visit [`/docs`](docs/) for organized documentation including:
+- **Project Planning & Architecture** - Roadmaps, feature analysis, and design decisions
+- **Technical Implementation** - WebRTC guides, plugin architecture, and implementation details
+- **DevOps & Deployment** - CI/CD setup, deployment guides, and contribution guidelines
+- **Business Strategy** - Monetization plans and implementation roadmaps
+
+🚀 **Quick Links**:
+- [Project Plan](PROJECT_PLAN.md) - Main roadmap and technical decisions
+- [Feature Analysis Report](FEATURE_ANALYSIS_REPORT.md) - Current implementation status
+- [WebRTC Implementation Guide](docs/WEBRTC_PERFORMANCE_IMPLEMENTATION_GUIDE.md) - Voice/video features
+- [Plugin Architecture Research](PLUGIN_BOT_ARCHITECTURE_RESEARCH.md) - Extensibility system
+
 ## Support
 
 - **Issues**: [GitHub Issues](https://github.com/bennerrrr/fethur-chat/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/bennerrrr/fethur-chat/discussions)
 - **Actions**: [GitHub Actions](https://github.com/bennerrrr/fethur-chat/actions)
-- **Documentation**: `/docs` directory
 - **Docker Images**: [GitHub Container Registry](https://github.com/bennerrrr/fethur-chat/packages)
 
 ---
