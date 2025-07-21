@@ -1,89 +1,105 @@
-# Fethur Documentation
+# 📚 Fethur Documentation
 
-Welcome to the Fethur documentation hub. This directory contains comprehensive documentation for the Fethur lightweight Discord alternative project.
+Welcome to the comprehensive documentation for Fethur, a lightweight, self-hostable Discord alternative. This documentation is organized by purpose and audience to help you find exactly what you need.
 
-## 📚 Documentation Index
+## 🗂️ Documentation Structure
 
-### 🏗️ Project Planning & Architecture
-- [Project Plan](../PROJECT_PLAN.md) - Main project roadmap and technical decisions
-- [Agent Collaboration Guidelines](../AGENT_COLLABORATION.md) - Guidelines for project updates
-- [Feature Analysis Report](../FEATURE_ANALYSIS_REPORT.md) - Current vs planned features analysis
-- [Implementation Summary](../IMPLEMENTATION_SUMMARY.md) - Summary of completed work
+### 📋 [Project Planning](./project-planning/)
+Strategic planning, feature analysis, and project coordination documents.
 
-### 🔧 Technical Implementation
-- [WebRTC Performance Implementation Guide](WEBRTC_PERFORMANCE_IMPLEMENTATION_GUIDE.md) - Comprehensive WebRTC implementation guide
-- [WebRTC Quick Reference](WEBRTC_QUICK_REFERENCE.md) - Quick reference for WebRTC implementation
-- [Plugin Bot Architecture Research](../PLUGIN_BOT_ARCHITECTURE_RESEARCH.md) - Extensibility system research and design
-- [Implementation Guide](../IMPLEMENTATION_GUIDE.md) - General implementation guidance
+- **[PROJECT_PLAN.md](./project-planning/PROJECT_PLAN.md)** - Master roadmap and feature specifications
+- **[FEATURE_ANALYSIS_REPORT.md](./project-planning/FEATURE_ANALYSIS_REPORT.md)** - Current vs planned features analysis
+- **[IMPLEMENTATION_SUMMARY.md](./project-planning/IMPLEMENTATION_SUMMARY.md)** - Implementation status and progress
+- **[AGENT_COLLABORATION.md](./project-planning/AGENT_COLLABORATION.md)** - Guidelines for agent collaboration
+- **[DOCUMENTATION_ORGANIZATION_SUMMARY.md](./project-planning/DOCUMENTATION_ORGANIZATION_SUMMARY.md)** - Documentation structure overview
 
-### 🚀 DevOps & Deployment
-- [Deployment Guide](DEPLOYMENT.md) - Production deployment instructions
-- [Contributing Guidelines](CONTRIBUTING.md) - Development contribution guide
-- [GitHub Actions Migration Summary](../GITHUB_ACTIONS_MIGRATION_SUMMARY.md) - CI/CD improvements
-- [GitHub Actions Fixes](../GITHUB_ACTIONS_FIXES.md) - CI/CD troubleshooting
-- [Comprehensive GitHub Actions Plan](../COMPREHENSIVE_GITHUB_ACTIONS_PLAN.md) - Complete CI/CD strategy
+### 🔧 [Technical](./technical/)
+Deep technical documentation for developers and architects.
 
-### 💰 Business Strategy
-- [Monetization Strategy](../MONETIZATION_STRATEGY.md) - Business model and revenue strategies
-- [Monetization Implementation Checklist](../MONETIZATION_IMPLEMENTATION_CHECKLIST.md) - Implementation roadmap
+- **[WEBRTC_PERFORMANCE_IMPLEMENTATION_GUIDE.md](./technical/WEBRTC_PERFORMANCE_IMPLEMENTATION_GUIDE.md)** - WebRTC implementation and performance optimization
+- **[WEBRTC_QUICK_REFERENCE.md](./technical/WEBRTC_QUICK_REFERENCE.md)** - Quick reference for WebRTC integration
+- **[PLUGIN_BOT_ARCHITECTURE_RESEARCH.md](./technical/PLUGIN_BOT_ARCHITECTURE_RESEARCH.md)** - Plugin and bot system architecture
+- **[IMPLEMENTATION_GUIDE.md](./technical/IMPLEMENTATION_GUIDE.md)** - General implementation guidelines
 
-## 🎯 Quick Start Navigation
+### 🚀 [Deployment](./deployment/)
+DevOps, CI/CD, deployment guides, and contribution guidelines.
 
-### For Developers
-1. Start with [Project Plan](../PROJECT_PLAN.md) for project overview
-2. Review [Feature Analysis Report](../FEATURE_ANALYSIS_REPORT.md) for current status
-3. Follow [Contributing Guidelines](CONTRIBUTING.md) for development setup
-4. Refer to [WebRTC Quick Reference](WEBRTC_QUICK_REFERENCE.md) for voice features
+- **[DEPLOYMENT.md](./deployment/DEPLOYMENT.md)** - Production deployment guide
+- **[CONTRIBUTING.md](./deployment/CONTRIBUTING.md)** - How to contribute to the project
+- **[COMPREHENSIVE_GITHUB_ACTIONS_PLAN.md](./deployment/COMPREHENSIVE_GITHUB_ACTIONS_PLAN.md)** - Complete CI/CD strategy
+- **[GITHUB_ACTIONS_FIXES.md](./deployment/GITHUB_ACTIONS_FIXES.md)** - GitHub Actions troubleshooting
+- **[GITHUB_ACTIONS_MIGRATION_SUMMARY.md](./deployment/GITHUB_ACTIONS_MIGRATION_SUMMARY.md)** - CI/CD migration notes
 
-### For DevOps/Deployment
-1. Read [Deployment Guide](DEPLOYMENT.md) for production setup
-2. Review [GitHub Actions Migration Summary](../GITHUB_ACTIONS_MIGRATION_SUMMARY.md) for CI/CD
-3. Use [Implementation Guide](../IMPLEMENTATION_GUIDE.md) for step-by-step instructions
+### 💼 [Business](./business/)
+Business strategy, monetization, and commercial considerations.
 
-### For Product Planning
-1. Review [Feature Analysis Report](../FEATURE_ANALYSIS_REPORT.md) for feature status
-2. Check [Monetization Strategy](../MONETIZATION_STRATEGY.md) for business aspects
-3. Reference [Project Plan](../PROJECT_PLAN.md) for roadmap and priorities
+- **[MONETIZATION_STRATEGY.md](./business/MONETIZATION_STRATEGY.md)** - Complete monetization strategy and market analysis
+- **[MONETIZATION_IMPLEMENTATION_CHECKLIST.md](./business/MONETIZATION_IMPLEMENTATION_CHECKLIST.md)** - Implementation checklist for revenue features
 
-### For Architecture Research
-1. Study [WebRTC Performance Implementation Guide](WEBRTC_PERFORMANCE_IMPLEMENTATION_GUIDE.md) for real-time communication
-2. Review [Plugin Bot Architecture Research](../PLUGIN_BOT_ARCHITECTURE_RESEARCH.md) for extensibility
-3. Check [Implementation Summary](../IMPLEMENTATION_SUMMARY.md) for what's been built
-
-## 📋 Documentation Status
-
-### ✅ Complete & Current
-- WebRTC implementation research and guides
-- Plugin/bot architecture design
-- CI/CD pipeline documentation
-- Project planning framework
-
-### 🚧 In Progress
-- Frontend framework research (identified in Feature Analysis)
-- User interface documentation
-- API documentation
-
-### 📋 Planned
-- End-user documentation
-- Admin panel guides
-- Troubleshooting documentation
-- Performance tuning guides
-
-## 🔄 Documentation Maintenance
-
-This documentation is actively maintained following the guidelines in [Agent Collaboration Guidelines](../AGENT_COLLABORATION.md). Key documents are updated as the project evolves:
-
-- **Project Plan**: Updated with each major milestone
-- **Feature Analysis**: Quarterly comprehensive reviews
-- **Implementation Guides**: Updated with technical discoveries
-- **Performance Guides**: Updated with benchmarking results
-
-## 📞 Getting Help
-
-- **Issues**: [GitHub Issues](https://github.com/bennerrrr/fethur-chat/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/bennerrrr/fethur-chat/discussions)
-- **Documentation Questions**: Create an issue with the `documentation` label
+### 📖 [Guides](./guides/)
+User guides and tutorials (directory ready for future content).
 
 ---
 
-*This documentation index provides a comprehensive overview of all project documentation. For specific technical questions, start with the relevant guide in the appropriate category.*
+## 🎯 Quick Navigation by Role
+
+### 👨‍💻 **For Developers**
+Start here to understand the codebase and contribute:
+1. [Contributing Guidelines](./deployment/CONTRIBUTING.md)
+2. [Project Plan](./project-planning/PROJECT_PLAN.md)
+3. [Feature Analysis](./project-planning/FEATURE_ANALYSIS_REPORT.md)
+4. [WebRTC Quick Reference](./technical/WEBRTC_QUICK_REFERENCE.md)
+
+### 🔧 **For DevOps Engineers**
+Deploy and maintain Fethur in production:
+1. [Deployment Guide](./deployment/DEPLOYMENT.md)
+2. [GitHub Actions Plan](./deployment/COMPREHENSIVE_GITHUB_ACTIONS_PLAN.md)
+3. [CI/CD Troubleshooting](./deployment/GITHUB_ACTIONS_FIXES.md)
+
+### 🏗️ **For Architects**
+Understand the technical architecture and design decisions:
+1. [WebRTC Implementation Guide](./technical/WEBRTC_PERFORMANCE_IMPLEMENTATION_GUIDE.md)
+2. [Plugin Architecture Research](./technical/PLUGIN_BOT_ARCHITECTURE_RESEARCH.md)
+3. [Implementation Summary](./project-planning/IMPLEMENTATION_SUMMARY.md)
+
+### 📊 **For Product/Business**
+Understand business strategy and feature planning:
+1. [Feature Analysis Report](./project-planning/FEATURE_ANALYSIS_REPORT.md)
+2. [Monetization Strategy](./business/MONETIZATION_STRATEGY.md)
+3. [Project Roadmap](./project-planning/PROJECT_PLAN.md)
+
+---
+
+## 📈 Project Status Overview
+
+- **Current Phase**: Core functionality development with WebRTC research completed
+- **Next Milestones**: Voice channel implementation, plugin system architecture
+- **Documentation Coverage**: Comprehensive technical and business documentation
+- **Deployment Status**: Docker-ready with CI/CD pipeline
+
+---
+
+## 🤝 Contributing to Documentation
+
+Documentation improvements are always welcome! Please see our [Contributing Guidelines](./deployment/CONTRIBUTING.md) for information on how to submit documentation updates.
+
+### Documentation Standards
+- Use clear, descriptive filenames
+- Include table of contents for documents >100 lines
+- Cross-reference related documents
+- Keep technical docs up-to-date with code changes
+- Follow markdown best practices
+
+---
+
+## 📞 Getting Help
+
+- **Technical Questions**: Check [WebRTC Quick Reference](./technical/WEBRTC_QUICK_REFERENCE.md) or [Implementation Guide](./technical/IMPLEMENTATION_GUIDE.md)
+- **Deployment Issues**: See [Deployment Guide](./deployment/DEPLOYMENT.md) or [GitHub Actions documentation](./deployment/)
+- **Feature Requests**: Review [Project Plan](./project-planning/PROJECT_PLAN.md) and [Feature Analysis](./project-planning/FEATURE_ANALYSIS_REPORT.md)
+- **Business Questions**: Consult [Monetization Strategy](./business/MONETIZATION_STRATEGY.md)
+
+---
+
+*Last Updated: January 2025*
+*Documentation Structure Version: 2.0*
