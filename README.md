@@ -194,16 +194,15 @@ MIT License - see LICENSE file for details
 ## Documentation
 
 📚 **Comprehensive Documentation**: Visit [`/docs`](docs/) for organized documentation including:
-- **Project Planning & Architecture** - Roadmaps, feature analysis, and design decisions
-- **Technical Implementation** - WebRTC guides, plugin architecture, and implementation details
-- **DevOps & Deployment** - CI/CD setup, deployment guides, and contribution guidelines
-- **Business Strategy** - Monetization plans and implementation roadmaps
+- **[Project Planning](docs/project-planning/)** - Roadmaps, feature analysis, and strategic planning
+- **[Technical](docs/technical/)** - WebRTC guides, plugin architecture, and implementation details
+- **[Deployment](docs/deployment/)** - CI/CD setup, deployment guides, and contribution guidelines
+- **[Business](docs/business/)** - Monetization plans and implementation roadmaps
 
-🚀 **Quick Links**:
-- [Project Plan](PROJECT_PLAN.md) - Main roadmap and technical decisions
-- [Feature Analysis Report](FEATURE_ANALYSIS_REPORT.md) - Current implementation status
-- [WebRTC Implementation Guide](docs/WEBRTC_PERFORMANCE_IMPLEMENTATION_GUIDE.md) - Voice/video features
-- [Plugin Architecture Research](PLUGIN_BOT_ARCHITECTURE_RESEARCH.md) - Extensibility system
+🚀 **Quick Links by Role**:
+- **Developers**: [Contributing Guide](docs/deployment/CONTRIBUTING.md) • [Project Plan](docs/project-planning/PROJECT_PLAN.md) • [Feature Analysis](docs/project-planning/FEATURE_ANALYSIS_REPORT.md)
+- **DevOps**: [Deployment Guide](docs/deployment/DEPLOYMENT.md) • [GitHub Actions Plan](docs/deployment/COMPREHENSIVE_GITHUB_ACTIONS_PLAN.md)
+- **Architects**: [WebRTC Implementation](docs/technical/WEBRTC_PERFORMANCE_IMPLEMENTATION_GUIDE.md) • [Plugin Architecture](docs/technical/PLUGIN_BOT_ARCHITECTURE_RESEARCH.md)
 
 ## Support
 
