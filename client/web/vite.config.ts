@@ -2,5 +2,30 @@ import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-	plugins: [sveltekit()]
+	plugins: [sveltekit()],
+	server: {
+		host: true,
+		port: 5173,
+		strictPort: false
+	},
+	build: {
+		target: 'es2022',
+		minify: 'esbuild',
+		sourcemap: true,
+		rollupOptions: {
+			output: {
+				manualChunks: {
+					vendor: ['svelte', '@sveltejs/kit'],
+					ui: ['lucide-svelte', 'clsx', 'tailwind-merge']
+				}
+			}
+		}
+	},
+	optimizeDeps: {
+		include: ['socket.io-client', 'lucide-svelte']
+	},
+	define: {
+		// Define global constants
+		__DEV__: JSON.stringify(process.env.NODE_ENV === 'development')
+	}
 });

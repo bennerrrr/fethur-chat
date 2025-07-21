@@ -1,0 +1,199 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+	html {
+		font-family: 'Inter', system-ui, sans-serif;
+		@apply antialiased;
+	}
+
+	body {
+		@apply bg-secondary-50 text-secondary-900 dark:bg-secondary-900 dark:text-secondary-100;
+	}
+
+	/* Custom scrollbar styles */
+	::-webkit-scrollbar {
+		width: 8px;
+		height: 8px;
+	}
+
+	::-webkit-scrollbar-track {
+		@apply bg-transparent;
+	}
+
+	::-webkit-scrollbar-thumb {
+		@apply bg-secondary-300 dark:bg-secondary-600 rounded-full;
+	}
+
+	::-webkit-scrollbar-thumb:hover {
+		@apply bg-secondary-400 dark:bg-secondary-500;
+	}
+
+	/* Focus styles */
+	*:focus {
+		@apply outline-none ring-2 ring-primary-500 ring-opacity-50;
+	}
+
+	/* Selection styles */
+	::selection {
+		@apply bg-primary-200 dark:bg-primary-800;
+	}
+}
+
+@layer components {
+	/* Button styles */
+	.btn {
+		@apply inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+	}
+
+	.btn-primary {
+		@apply btn bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500 active:bg-primary-800;
+	}
+
+	.btn-secondary {
+		@apply btn bg-secondary-200 text-secondary-900 hover:bg-secondary-300 focus:ring-secondary-500 dark:bg-secondary-700 dark:text-secondary-100 dark:hover:bg-secondary-600;
+	}
+
+	.btn-ghost {
+		@apply btn bg-transparent text-secondary-700 hover:bg-secondary-100 focus:ring-secondary-500 dark:text-secondary-300 dark:hover:bg-secondary-800;
+	}
+
+	.btn-danger {
+		@apply btn bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 active:bg-red-800;
+	}
+
+	/* Input styles */
+	.input {
+		@apply w-full px-3 py-2 text-sm border border-secondary-300 rounded-lg bg-white placeholder-secondary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-secondary-800 dark:border-secondary-600 dark:text-secondary-100 dark:placeholder-secondary-400;
+	}
+
+	.input-error {
+		@apply border-red-500 focus:ring-red-500;
+	}
+
+	/* Card styles */
+	.card {
+		@apply bg-white rounded-xl shadow-soft border border-secondary-200 dark:bg-secondary-800 dark:border-secondary-700;
+	}
+
+	.card-header {
+		@apply p-4 border-b border-secondary-200 dark:border-secondary-700;
+	}
+
+	.card-body {
+		@apply p-4;
+	}
+
+	/* Chat message styles */
+	.message-bubble {
+		@apply p-3 rounded-2xl max-w-xs chat-message;
+	}
+
+	.message-bubble-sent {
+		@apply message-bubble bg-primary-600 text-white ml-auto;
+	}
+
+	.message-bubble-received {
+		@apply message-bubble bg-secondary-200 text-secondary-900 dark:bg-secondary-700 dark:text-secondary-100;
+	}
+
+	/* Sidebar styles */
+	.sidebar {
+		@apply w-64 bg-white border-r border-secondary-200 dark:bg-secondary-800 dark:border-secondary-700;
+	}
+
+	.sidebar-item {
+		@apply flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200 cursor-pointer;
+	}
+
+	.sidebar-item-active {
+		@apply sidebar-item bg-primary-100 text-primary-900 dark:bg-primary-900 dark:text-primary-100;
+	}
+
+	.sidebar-item-inactive {
+		@apply sidebar-item text-secondary-700 hover:bg-secondary-100 dark:text-secondary-300 dark:hover:bg-secondary-700;
+	}
+
+	/* Loading spinner */
+	.spinner {
+		@apply inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin;
+	}
+
+	/* Badge styles */
+	.badge {
+		@apply inline-flex items-center px-2 py-1 text-xs font-medium rounded-full;
+	}
+
+	.badge-primary {
+		@apply badge bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-200;
+	}
+
+	.badge-success {
+		@apply badge bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200;
+	}
+
+	.badge-warning {
+		@apply badge bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200;
+	}
+
+	.badge-error {
+		@apply badge bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200;
+	}
+
+	/* Typing indicator */
+	.typing-indicator {
+		@apply flex space-x-1;
+	}
+
+	.typing-dot {
+		@apply w-2 h-2 bg-secondary-400 rounded-full animate-typing;
+	}
+
+	.typing-dot:nth-child(2) {
+		animation-delay: 0.2s;
+	}
+
+	.typing-dot:nth-child(3) {
+		animation-delay: 0.4s;
+	}
+}
+
+@layer utilities {
+	/* Custom utilities */
+	.text-balance {
+		text-wrap: balance;
+	}
+
+	.bg-gradient-primary {
+		@apply bg-gradient-to-r from-primary-600 to-primary-700;
+	}
+
+	.shadow-glow {
+		box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.1), 0 0 24px rgba(59, 130, 246, 0.15);
+	}
+
+	/* Layout utilities */
+	.safe-area-inset {
+		padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+	}
+
+	/* Animation utilities */
+	.animate-fade-in {
+		animation: fadeIn 0.3s ease-in-out;
+	}
+
+	.animate-slide-in {
+		animation: slideIn 0.3s ease-out;
+	}
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+	.dark-auto {
+		@apply dark;
+	}
+}
