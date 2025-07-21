@@ -1,0 +1,44 @@
+name: "hello-bot"
+version: "1.0.0"
+description: "A simple greeting bot that responds to hello commands and welcomes new users"
+author: "Fethur Team"
+license: "MIT"
+
+permissions:
+  - "messages:read"
+  - "messages:write"
+  - "channels:read"
+
+dependencies:
+  - "fethur-core@1.0.0"
+
+resources:
+  max_memory_mb: 32
+  max_cpu_percent: 5
+  max_execution_time: "5s"
+  max_goroutines: 10
+  max_connections: 5
+
+entry_point: "./main.go"
+
+commands:
+  - name: "hello"
+    description: "Say hello to the user"
+    usage: "/hello [name]"
+    options:
+      - name: "name"
+        description: "Name to greet (optional)"
+        type: "string"
+        required: false
+    permissions:
+      - "messages:write"
+      
+  - name: "info"
+    description: "Show bot information"
+    usage: "/info"
+    permissions:
+      - "messages:read"
+
+events:
+  - "user.join"
+  - "message.create"
