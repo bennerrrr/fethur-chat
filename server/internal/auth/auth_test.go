@@ -47,7 +47,7 @@ func TestGenerateToken(t *testing.T) {
 	userID := 1
 	username := "testuser"
 
-	token, err := service.GenerateToken(userID, username)
+	token, err := service.GenerateToken(userID, username, "user")
 	if err != nil {
 		t.Fatalf("Failed to generate token: %v", err)
 	}
@@ -62,7 +62,7 @@ func TestValidateToken(t *testing.T) {
 	userID := 1
 	username := "testuser"
 
-	token, err := service.GenerateToken(userID, username)
+	token, err := service.GenerateToken(userID, username, "user")
 	if err != nil {
 		t.Fatalf("Failed to generate token: %v", err)
 	}
