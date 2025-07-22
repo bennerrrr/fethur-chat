@@ -7,6 +7,9 @@ Deep technical documentation for developers, architects, and technical contribut
 ### Security & Authentication
 - **[ADVANCED_SECURITY_FEATURES.md](./ADVANCED_SECURITY_FEATURES.md)** - Comprehensive guide for enterprise-grade security features including 2FA, OAuth2/SAML, LDAP, E2E encryption, RBAC, and security best practices
 
+### Real-Time Chat & Messaging Architecture
+- **[MODERN_CHAT_ARCHITECTURES_AND_RECOMMENDATIONS.md](./MODERN_CHAT_ARCHITECTURES_AND_RECOMMENDATIONS.md)** - In-depth analysis of modern real-time chat architectures, message delivery patterns, and specific recommendations for Feathur
+
 ### WebRTC & Real-Time Communication
 - **[WEBRTC_PERFORMANCE_IMPLEMENTATION_GUIDE.md](./WEBRTC_PERFORMANCE_IMPLEMENTATION_GUIDE.md)** - Comprehensive guide for implementing WebRTC voice/video features with performance optimization
 - **[WEBRTC_QUICK_REFERENCE.md](./WEBRTC_QUICK_REFERENCE.md)** - Quick reference guide for WebRTC integration, APIs, and troubleshooting
@@ -16,6 +19,9 @@ Deep technical documentation for developers, architects, and technical contribut
 - **[PLUGIN_BOT_ARCHITECTURE_RESEARCH.md](./PLUGIN_BOT_ARCHITECTURE_RESEARCH.md)** - Extensive research and design for Discord-like plugin and bot support system
 - **[IMPLEMENTATION_GUIDE.md](./IMPLEMENTATION_GUIDE.md)** - General implementation guidelines and GitHub Actions setup
 
+### UI/UX & Design System
+- **[CHAT_UI_UX_DESIGN_SYSTEM.md](./CHAT_UI_UX_DESIGN_SYSTEM.md)** - Comprehensive UI/UX patterns, accessibility standards, and design system for modern chat applications with SvelteKit
+
 ## 🎯 Technical Focus Areas
 
 ### Security & Compliance
@@ -24,6 +30,13 @@ Deep technical documentation for developers, architects, and technical contribut
 - End-to-end encryption
 - Role-based access control
 - Compliance features (GDPR, audit logging)
+
+### Real-Time Messaging Architecture
+- Message delivery patterns and guarantees
+- Message ordering and consistency strategies
+- Offline message handling and synchronization
+- Presence and typing indicators
+- Scalability patterns for millions of users
 
 ### Real-Time Communication
 - WebRTC peer-to-peer connections
@@ -49,6 +62,10 @@ Deep technical documentation for developers, architects, and technical contribut
 1. Review [ADVANCED_SECURITY_FEATURES.md](./ADVANCED_SECURITY_FEATURES.md) for security requirements
 2. Follow implementation roadmap for phased security rollout
 3. Use provided code examples and best practices
+
+### Building Chat Features
+1. Start with [MODERN_CHAT_ARCHITECTURES_AND_RECOMMENDATIONS.md](./MODERN_CHAT_ARCHITECTURES_AND_RECOMMENDATIONS.md) for architecture overview
+2. Review platform comparisons and best practices from Discord, WhatsApp, Slack, and Matrix
 
 ### Understanding Voice Features
 1. Start with [WEBRTC_QUICK_REFERENCE.md](./WEBRTC_QUICK_REFERENCE.md) for overview
