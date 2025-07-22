@@ -39,6 +39,58 @@ export interface Message {
 	createdAt: Date;
 	updatedAt?: Date;
 	isEdited: boolean;
+	// Enhanced chat features
+	replyToId?: number;
+	replyTo?: Message;
+	reactions?: Reaction[];
+	attachments?: Attachment[];
+	type?: 'text' | 'system' | 'voice_join' | 'voice_leave';
+}
+
+export interface Reaction {
+	id: number;
+	emoji: string;
+	count: number;
+	users: User[];
+	messageId: number;
+}
+
+export interface Attachment {
+	id: number;
+	filename: string;
+	url: string;
+	mimeType: string;
+	size: number;
+	messageId: number;
+}
+
+// Voice-related types
+export interface VoiceState {
+	userId: number;
+	channelId: number | null;
+	isMuted: boolean;
+	isDeafened: boolean;
+	isSpeaking: boolean;
+	connectionQuality: 'excellent' | 'good' | 'poor' | 'disconnected';
+}
+
+export interface VoiceConnection {
+	channelId: number;
+	isConnected: boolean;
+	isMuted: boolean;
+	isDeafened: boolean;
+	participants: VoiceParticipant[];
+	localStream?: MediaStream;
+	connections: Map<number, RTCPeerConnection>;
+}
+
+export interface VoiceParticipant {
+	user: User;
+	isSpeaking: boolean;
+	isMuted: boolean;
+	isDeafened: boolean;
+	volume: number;
+	connectionQuality: 'excellent' | 'good' | 'poor';
 }
 
 // API response types
@@ -110,6 +162,29 @@ export interface ChatState {
 	typingUsers: TypingEvent[];
 	isLoadingMessages: boolean;
 	hasMoreMessages: boolean;
+	replyingTo: Message | null;
+	selectedMessage: Message | null;
+}
+
+export interface VoiceStore {
+	currentConnection: VoiceConnection | null;
+	isConnecting: boolean;
+	error: string | null;
+	devices: {
+		audioInput: MediaDeviceInfo[];
+		audioOutput: MediaDeviceInfo[];
+	};
+	settings: {
+		inputDeviceId: string | null;
+		outputDeviceId: string | null;
+		inputVolume: number;
+		outputVolume: number;
+		echoCancellation: boolean;
+		noiseSuppression: boolean;
+		autoGainControl: boolean;
+		pushToTalk: boolean;
+		pushToTalkKey: string;
+	};
 }
 
 // Environment configuration
