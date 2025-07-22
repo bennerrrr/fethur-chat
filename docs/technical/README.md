@@ -4,6 +4,9 @@ Deep technical documentation for developers, architects, and technical contribut
 
 ## 📑 Documents Overview
 
+### Security & Authentication
+- **[ADVANCED_SECURITY_FEATURES.md](./ADVANCED_SECURITY_FEATURES.md)** - Comprehensive guide for enterprise-grade security features including 2FA, OAuth2/SAML, LDAP, E2E encryption, RBAC, and security best practices
+
 ### WebRTC & Real-Time Communication
 - **[WEBRTC_PERFORMANCE_IMPLEMENTATION_GUIDE.md](./WEBRTC_PERFORMANCE_IMPLEMENTATION_GUIDE.md)** - Comprehensive guide for implementing WebRTC voice/video features with performance optimization
 - **[WEBRTC_QUICK_REFERENCE.md](./WEBRTC_QUICK_REFERENCE.md)** - Quick reference guide for WebRTC integration, APIs, and troubleshooting
@@ -14,6 +17,13 @@ Deep technical documentation for developers, architects, and technical contribut
 - **[IMPLEMENTATION_GUIDE.md](./IMPLEMENTATION_GUIDE.md)** - General implementation guidelines and GitHub Actions setup
 
 ## 🎯 Technical Focus Areas
+
+### Security & Compliance
+- Multi-factor authentication (TOTP, SMS, Email)
+- Enterprise SSO (OAuth2, SAML, LDAP/AD)
+- End-to-end encryption
+- Role-based access control
+- Compliance features (GDPR, audit logging)
 
 ### Real-Time Communication
 - WebRTC peer-to-peer connections
@@ -34,6 +44,11 @@ Deep technical documentation for developers, architects, and technical contribut
 - Testing and validation procedures
 
 ## 🚀 Quick Start for Developers
+
+### Security Implementation
+1. Review [ADVANCED_SECURITY_FEATURES.md](./ADVANCED_SECURITY_FEATURES.md) for security requirements
+2. Follow implementation roadmap for phased security rollout
+3. Use provided code examples and best practices
 
 ### Understanding Voice Features
 1. Start with [WEBRTC_QUICK_REFERENCE.md](./WEBRTC_QUICK_REFERENCE.md) for overview

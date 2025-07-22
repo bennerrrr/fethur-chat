@@ -16,6 +16,7 @@ Strategic planning, feature analysis, and project coordination documents.
 ### 🔧 [Technical](./technical/)
 Deep technical documentation for developers and architects.
 
+- **[ADVANCED_SECURITY_FEATURES.md](./technical/ADVANCED_SECURITY_FEATURES.md)** - Enterprise-grade security implementation guide (2FA, OAuth2/SAML, LDAP, E2E encryption, RBAC)
 - **[WEB_CLIENT_ARCHITECTURE.md](./technical/WEB_CLIENT_ARCHITECTURE.md)** - Web client architecture for self-hosted and cloud deployment
 - **[WEBRTC_PERFORMANCE_IMPLEMENTATION_GUIDE.md](./technical/WEBRTC_PERFORMANCE_IMPLEMENTATION_GUIDE.md)** - WebRTC implementation and performance optimization
 - **[WEBRTC_QUICK_REFERENCE.md](./technical/WEBRTC_QUICK_REFERENCE.md)** - Quick reference for WebRTC integration
@@ -48,8 +49,9 @@ User guides and tutorials (directory ready for future content).
 Start here to understand the codebase and contribute:
 1. [Contributing Guidelines](./deployment/CONTRIBUTING.md)
 2. [Project Plan](./project-planning/PROJECT_PLAN.md)
-3. [Feature Analysis](./project-planning/FEATURE_ANALYSIS_REPORT.md)
-4. [WebRTC Quick Reference](./technical/WEBRTC_QUICK_REFERENCE.md)
+3. [Advanced Security Features](./technical/ADVANCED_SECURITY_FEATURES.md)
+4. [Feature Analysis](./project-planning/FEATURE_ANALYSIS_REPORT.md)
+5. [WebRTC Quick Reference](./technical/WEBRTC_QUICK_REFERENCE.md)
 
 ### 🔧 **For DevOps Engineers**
 Deploy and maintain Fethur in production:
@@ -59,9 +61,10 @@ Deploy and maintain Fethur in production:
 
 ### 🏗️ **For Architects**
 Understand the technical architecture and design decisions:
-1. [WebRTC Implementation Guide](./technical/WEBRTC_PERFORMANCE_IMPLEMENTATION_GUIDE.md)
-2. [Plugin Architecture Research](./technical/PLUGIN_BOT_ARCHITECTURE_RESEARCH.md)
-3. [Implementation Summary](./project-planning/IMPLEMENTATION_SUMMARY.md)
+1. [Advanced Security Features](./technical/ADVANCED_SECURITY_FEATURES.md)
+2. [WebRTC Implementation Guide](./technical/WEBRTC_PERFORMANCE_IMPLEMENTATION_GUIDE.md)
+3. [Plugin Architecture Research](./technical/PLUGIN_BOT_ARCHITECTURE_RESEARCH.md)
+4. [Implementation Summary](./project-planning/IMPLEMENTATION_SUMMARY.md)
 
 ### 📊 **For Product/Business**
 Understand business strategy and feature planning:
@@ -74,6 +77,7 @@ Understand business strategy and feature planning:
 ## 📈 Project Status Overview
 
 - **Current Phase**: Core functionality development with WebRTC research completed
+- **Security Features**: Comprehensive security documentation added for enterprise deployment
 - **Next Milestones**: Voice channel implementation, plugin system architecture
 - **Documentation Coverage**: Comprehensive technical and business documentation
 - **Deployment Status**: Docker-ready with CI/CD pipeline
@@ -95,6 +99,7 @@ Documentation improvements are always welcome! Please see our [Contributing Guid
 
 ## 📞 Getting Help
 
+- **Security Questions**: Check [Advanced Security Features](./technical/ADVANCED_SECURITY_FEATURES.md) for comprehensive security guidance
 - **Technical Questions**: Check [WebRTC Quick Reference](./technical/WEBRTC_QUICK_REFERENCE.md) or [Implementation Guide](./technical/IMPLEMENTATION_GUIDE.md)
 - **Deployment Issues**: See [Deployment Guide](./deployment/DEPLOYMENT.md) or [GitHub Actions documentation](./deployment/)
 - **Feature Requests**: Review [Project Plan](./project-planning/PROJECT_PLAN.md) and [Feature Analysis](./project-planning/FEATURE_ANALYSIS_REPORT.md)
