@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"sync"
@@ -44,6 +45,13 @@ func (s *Server) setupRoutes() {
 	// API routes
 	api := s.router.Group("/api")
 	{
+		// Setup routes (no auth required)
+		setup := api.Group("/setup")
+		{
+			setup.GET("/status", s.handleSetupStatus)
+			setup.POST("/configure", s.handleSetupConfigure)
+		}
+
 		// Auth routes
 		auth := api.Group("/auth")
 		{
@@ -57,6 +65,9 @@ func (s *Server) setupRoutes() {
 		{
 			// User routes
 			protected.GET("/user/profile", s.handleGetProfile)
+
+			// Settings routes (admin only)
+			protected.GET("/settings", s.adminMiddleware(), s.handleGetSettings)
 
 			// Server routes
 			protected.POST("/servers", s.handleCreateServer)
@@ -90,14 +101,147 @@ func (s *Server) handleHealth(c *gin.Context) {
 	})
 }
 
-func (s *Server) handleRegister(c *gin.Context) {
+func (s *Server) handleSetupStatus(c *gin.Context) {
+	isFirstTime, err := s.db.IsFirstTime()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check setup status"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"isFirstTime": isFirstTime,
+	})
+}
+
+func (s *Server) handleSetupConfigure(c *gin.Context) {
 	var req struct {
-		Username string `json:"username" binding:"required"`
-		Email    string `json:"email" binding:"required,email"`
-		Password string `json:"password" binding:"required,min=6"`
+		Network struct {
+			Hostname       string `json:"hostname"`
+			Port           string `json:"port"`
+			SSL            bool   `json:"ssl"`
+			ExternalDomain string `json:"externalDomain"`
+			MDNS           bool   `json:"mdns"`
+		} `json:"network"`
+		Auth struct {
+			Mode                 string `json:"mode"`
+			RegistrationPassword string `json:"registrationPassword"`
+		} `json:"auth"`
+		Admin struct {
+			Username string `json:"username"`
+			Password string `json:"password"`
+		} `json:"admin"`
+		User struct {
+			Username string `json:"username"`
+			Password string `json:"password"`
+		} `json:"user"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Validate admin password
+	if err := s.auth.ValidatePassword(req.Admin.Password); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Save settings
+	settings := map[string]string{
+		"hostname":              req.Network.Hostname,
+		"port":                  req.Network.Port,
+		"ssl_enabled":           fmt.Sprintf("%t", req.Network.SSL),
+		"external_domain":       req.Network.ExternalDomain,
+		"mdns_enabled":          fmt.Sprintf("%t", req.Network.MDNS),
+		"auth_mode":             req.Auth.Mode,
+		"registration_password": req.Auth.RegistrationPassword,
+	}
+
+	for key, value := range settings {
+		if err := s.db.SetSetting(key, value, ""); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save settings"})
+			return
+		}
+	}
+
+	// Create super admin user
+	hashedPassword, err := s.auth.HashPassword(req.Admin.Password)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
+		return
+	}
+
+	_, err = s.db.Exec(
+		"INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, ?)",
+		req.Admin.Username, "", hashedPassword, "super_admin",
+	)
+	if err != nil {
+		c.JSON(http.StatusConflict, gin.H{"error": "Admin user already exists"})
+		return
+	}
+
+	// Create normal user if provided
+	if req.User.Username != "" && req.User.Password != "" {
+		if err := s.auth.ValidatePassword(req.User.Password); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "User password: " + err.Error()})
+			return
+		}
+
+		userHashedPassword, err := s.auth.HashPassword(req.User.Password)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash user password"})
+			return
+		}
+
+		_, err = s.db.Exec(
+			"INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, ?)",
+			req.User.Username, "", userHashedPassword, "user",
+		)
+		if err != nil {
+			c.JSON(http.StatusConflict, gin.H{"error": "User already exists"})
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Configuration completed successfully",
+	})
+}
+
+func (s *Server) handleRegister(c *gin.Context) {
+	var req struct {
+		Username             string `json:"username" binding:"required"`
+		Password             string `json:"password" binding:"required,min=6"`
+		RegistrationPassword string `json:"registrationPassword"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Check authentication mode
+	authMode, err := s.db.GetSetting("auth_mode")
+	if err != nil {
+		authMode = "public" // Default to public
+	}
+
+	// Validate registration based on auth mode
+	switch authMode {
+	case "admin_only":
+		c.JSON(http.StatusForbidden, gin.H{"error": "Registration is disabled. Only admins can create accounts."})
+		return
+	case "open_registration":
+		regPassword, err := s.db.GetSetting("registration_password")
+		if err != nil || regPassword != req.RegistrationPassword {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Invalid registration password"})
+			return
+		}
+	}
+
+	// Validate password
+	if err := s.auth.ValidatePassword(req.Password); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -111,8 +255,8 @@ func (s *Server) handleRegister(c *gin.Context) {
 
 	// Insert user into database
 	result, err := s.db.Exec(
-		"INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)",
-		req.Username, req.Email, hashedPassword,
+		"INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, ?)",
+		req.Username, "", hashedPassword, "user",
 	)
 	if err != nil {
 		c.JSON(http.StatusConflict, gin.H{"error": "Username or email already exists"})
@@ -122,7 +266,7 @@ func (s *Server) handleRegister(c *gin.Context) {
 	userID, _ := result.LastInsertId()
 
 	// Generate token
-	token, err := s.auth.GenerateToken(int(userID), req.Username)
+	token, err := s.auth.GenerateToken(int(userID), req.Username, "user")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
 		return
@@ -133,7 +277,8 @@ func (s *Server) handleRegister(c *gin.Context) {
 		"user": gin.H{
 			"id":       userID,
 			"username": req.Username,
-			"email":    req.Email,
+			"email":    "", // Email is now optional
+			"role":     "user",
 		},
 	})
 }
@@ -150,31 +295,26 @@ func (s *Server) handleLogin(c *gin.Context) {
 	}
 
 	// Get user from database
-	var user struct {
-		ID           int    `json:"id"`
-		Username     string `json:"username"`
-		Email        string `json:"email"`
-		PasswordHash string `json:"-"`
-	}
-
+	var userID int
+	var username, email, passwordHash, role string
 	err := s.db.QueryRow(
-		"SELECT id, username, email, password_hash FROM users WHERE username = ?",
+		"SELECT id, username, email, password_hash, role FROM users WHERE username = ?",
 		req.Username,
-	).Scan(&user.ID, &user.Username, &user.Email, &user.PasswordHash)
+	).Scan(&userID, &username, &email, &passwordHash, &role)
 
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid username or password"})
 		return
 	}
 
 	// Check password
-	if !s.auth.CheckPassword(req.Password, user.PasswordHash) {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
+	if !s.auth.CheckPassword(req.Password, passwordHash) {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid username or password"})
 		return
 	}
 
 	// Generate token
-	token, err := s.auth.GenerateToken(user.ID, user.Username)
+	token, err := s.auth.GenerateToken(userID, username, role)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
 		return
@@ -183,9 +323,10 @@ func (s *Server) handleLogin(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"token": token,
 		"user": gin.H{
-			"id":       user.ID,
-			"username": user.Username,
-			"email":    user.Email,
+			"id":       userID,
+			"username": username,
+			"email":    email,
+			"role":     role,
 		},
 	})
 }
@@ -567,4 +708,27 @@ func (s *Server) authMiddleware() gin.HandlerFunc {
 		c.Set("username", claims.Username)
 		c.Next()
 	}
+}
+
+func (s *Server) adminMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID := c.GetInt("user_id")
+		var role string
+		err := s.db.QueryRow("SELECT role FROM users WHERE id = ?", userID).Scan(&role)
+		if err != nil || (role != "super_admin" && role != "admin") {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Only admins can access this endpoint"})
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
+}
+
+func (s *Server) handleGetSettings(c *gin.Context) {
+	settings, err := s.db.GetAllSettings()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get settings"})
+		return
+	}
+	c.JSON(http.StatusOK, settings)
 }

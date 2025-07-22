@@ -17,6 +17,7 @@ type Service struct {
 type Claims struct {
 	UserID   int    `json:"user_id"`
 	Username string `json:"username"`
+	Role     string `json:"role"`
 	jwt.RegisteredClaims
 }
 
@@ -45,11 +46,40 @@ func (s *Service) CheckPassword(password, hash string) bool {
 	return err == nil
 }
 
-// GenerateToken creates a JWT token for a user
-func (s *Service) GenerateToken(userID int, username string) (string, error) {
+// ValidatePassword checks if password meets requirements
+func (s *Service) ValidatePassword(password string) error {
+	if len(password) < 9 {
+		return fmt.Errorf("password must be at least 9 characters long")
+	}
+
+	hasNumber := false
+	hasSpecial := false
+
+	for _, char := range password {
+		if char >= '0' && char <= '9' {
+			hasNumber = true
+		}
+		if (char >= '!' && char <= '/') || (char >= ':' && char <= '@') || (char >= '[' && char <= '`') || (char >= '{' && char <= '~') {
+			hasSpecial = true
+		}
+	}
+
+	if !hasNumber {
+		return fmt.Errorf("password must contain at least one number")
+	}
+	if !hasSpecial {
+		return fmt.Errorf("password must contain at least one special character")
+	}
+
+	return nil
+}
+
+// GenerateToken creates a JWT token for a user with role
+func (s *Service) GenerateToken(userID int, username, role string) (string, error) {
 	claims := Claims{
 		UserID:   userID,
 		Username: username,
+		Role:     role,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),

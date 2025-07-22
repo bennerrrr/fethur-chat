@@ -13,6 +13,54 @@ type Database struct {
 	*sql.DB
 }
 
+// IsFirstTime checks if this is the first time running the application
+func (db *Database) IsFirstTime() (bool, error) {
+	var count int
+	err := db.QueryRow("SELECT COUNT(*) FROM users").Scan(&count)
+	if err != nil {
+		return false, err
+	}
+	return count == 0, nil
+}
+
+// GetSetting retrieves a setting value by key
+func (db *Database) GetSetting(key string) (string, error) {
+	var value string
+	err := db.QueryRow("SELECT value FROM settings WHERE key = ?", key).Scan(&value)
+	if err != nil {
+		return "", err
+	}
+	return value, nil
+}
+
+// SetSetting sets a setting value by key
+func (db *Database) SetSetting(key, value, description string) error {
+	_, err := db.Exec(`
+		INSERT OR REPLACE INTO settings (key, value, description, updated_at) 
+		VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+	`, key, value, description)
+	return err
+}
+
+// GetAllSettings retrieves all settings
+func (db *Database) GetAllSettings() (map[string]string, error) {
+	rows, err := db.Query("SELECT key, value FROM settings")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	settings := make(map[string]string)
+	for rows.Next() {
+		var key, value string
+		if err := rows.Scan(&key, &value); err != nil {
+			return nil, err
+		}
+		settings[key] = value
+	}
+	return settings, nil
+}
+
 func Init() (*Database, error) {
 	// Ensure data directory exists
 	if err := os.MkdirAll("./data", 0755); err != nil {
@@ -39,14 +87,25 @@ func Init() (*Database, error) {
 }
 
 func createTables(db *sql.DB) error {
-	// Users table
+	// Users table with role support
 	usersTable := `
 	CREATE TABLE IF NOT EXISTS users (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		username TEXT UNIQUE NOT NULL,
-		email TEXT UNIQUE NOT NULL,
+		email TEXT,
 		password_hash TEXT NOT NULL,
+		role TEXT DEFAULT 'user' CHECK (role IN ('super_admin', 'admin', 'user')),
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	);`
+
+	// Settings table for server configuration
+	settingsTable := `
+	CREATE TABLE IF NOT EXISTS settings (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		key TEXT UNIQUE NOT NULL,
+		value TEXT NOT NULL,
+		description TEXT,
 		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	);`
 
@@ -97,7 +156,7 @@ func createTables(db *sql.DB) error {
 		UNIQUE(user_id, server_id)
 	);`
 
-	tables := []string{usersTable, serversTable, channelsTable, messagesTable, serverMembersTable}
+	tables := []string{usersTable, settingsTable, serversTable, channelsTable, messagesTable, serverMembersTable}
 
 	for _, table := range tables {
 		if _, err := db.Exec(table); err != nil {

@@ -13,7 +13,16 @@ const config = {
 			assets: 'build',
 			fallback: 'index.html',
 			precompress: false
-		})
+		}),
+		prerender: {
+			handleHttpError: ({ path, referrer, message }) => {
+				// Ignore missing routes during prerender
+				if (message.includes('Not found')) {
+					return;
+				}
+				throw new Error(message);
+			}
+		}
 	}
 };
 
