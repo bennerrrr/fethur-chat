@@ -4,6 +4,9 @@ Deep technical documentation for developers, architects, and technical contribut
 
 ## 📑 Documents Overview
 
+### Real-Time Chat & Messaging Architecture
+- **[MODERN_CHAT_ARCHITECTURES_AND_RECOMMENDATIONS.md](./MODERN_CHAT_ARCHITECTURES_AND_RECOMMENDATIONS.md)** - In-depth analysis of modern real-time chat architectures, message delivery patterns, and specific recommendations for Feathur
+
 ### WebRTC & Real-Time Communication
 - **[WEBRTC_PERFORMANCE_IMPLEMENTATION_GUIDE.md](./WEBRTC_PERFORMANCE_IMPLEMENTATION_GUIDE.md)** - Comprehensive guide for implementing WebRTC voice/video features with performance optimization
 - **[WEBRTC_QUICK_REFERENCE.md](./WEBRTC_QUICK_REFERENCE.md)** - Quick reference guide for WebRTC integration, APIs, and troubleshooting
@@ -17,6 +20,13 @@ Deep technical documentation for developers, architects, and technical contribut
 - **[CHAT_UI_UX_DESIGN_SYSTEM.md](./CHAT_UI_UX_DESIGN_SYSTEM.md)** - Comprehensive UI/UX patterns, accessibility standards, and design system for modern chat applications with SvelteKit
 
 ## 🎯 Technical Focus Areas
+
+### Real-Time Messaging Architecture
+- Message delivery patterns and guarantees
+- Message ordering and consistency strategies
+- Offline message handling and synchronization
+- Presence and typing indicators
+- Scalability patterns for millions of users
 
 ### Real-Time Communication
 - WebRTC peer-to-peer connections
@@ -37,6 +47,10 @@ Deep technical documentation for developers, architects, and technical contribut
 - Testing and validation procedures
 
 ## 🚀 Quick Start for Developers
+
+### Building Chat Features
+1. Start with [MODERN_CHAT_ARCHITECTURES_AND_RECOMMENDATIONS.md](./MODERN_CHAT_ARCHITECTURES_AND_RECOMMENDATIONS.md) for architecture overview
+2. Review platform comparisons and best practices from Discord, WhatsApp, Slack, and Matrix
 
 ### Understanding Voice Features
 1. Start with [WEBRTC_QUICK_REFERENCE.md](./WEBRTC_QUICK_REFERENCE.md) for overview
