@@ -20,6 +20,7 @@ Deep technical documentation for developers and architects.
 - **[WEBRTC_PERFORMANCE_IMPLEMENTATION_GUIDE.md](./technical/WEBRTC_PERFORMANCE_IMPLEMENTATION_GUIDE.md)** - WebRTC implementation and performance optimization
 - **[WEBRTC_QUICK_REFERENCE.md](./technical/WEBRTC_QUICK_REFERENCE.md)** - Quick reference for WebRTC integration
 - **[PLUGIN_BOT_ARCHITECTURE_RESEARCH.md](./technical/PLUGIN_BOT_ARCHITECTURE_RESEARCH.md)** - Plugin and bot system architecture
+- **[CHAT_UI_UX_DESIGN_SYSTEM.md](./technical/CHAT_UI_UX_DESIGN_SYSTEM.md)** - UI/UX patterns and design system for chat applications
 - **[IMPLEMENTATION_GUIDE.md](./technical/IMPLEMENTATION_GUIDE.md)** - General implementation guidelines
 
 ### 🚀 [Deployment](./deployment/)
@@ -49,7 +50,8 @@ Start here to understand the codebase and contribute:
 1. [Contributing Guidelines](./deployment/CONTRIBUTING.md)
 2. [Project Plan](./project-planning/PROJECT_PLAN.md)
 3. [Feature Analysis](./project-planning/FEATURE_ANALYSIS_REPORT.md)
-4. [WebRTC Quick Reference](./technical/WEBRTC_QUICK_REFERENCE.md)
+4. [UI/UX Design System](./technical/CHAT_UI_UX_DESIGN_SYSTEM.md)
+5. [WebRTC Quick Reference](./technical/WEBRTC_QUICK_REFERENCE.md)
 
 ### 🔧 **For DevOps Engineers**
 Deploy and maintain Fethur in production:
@@ -61,7 +63,8 @@ Deploy and maintain Fethur in production:
 Understand the technical architecture and design decisions:
 1. [WebRTC Implementation Guide](./technical/WEBRTC_PERFORMANCE_IMPLEMENTATION_GUIDE.md)
 2. [Plugin Architecture Research](./technical/PLUGIN_BOT_ARCHITECTURE_RESEARCH.md)
-3. [Implementation Summary](./project-planning/IMPLEMENTATION_SUMMARY.md)
+3. [UI/UX Design System](./technical/CHAT_UI_UX_DESIGN_SYSTEM.md)
+4. [Implementation Summary](./project-planning/IMPLEMENTATION_SUMMARY.md)
 
 ### 📊 **For Product/Business**
 Understand business strategy and feature planning:

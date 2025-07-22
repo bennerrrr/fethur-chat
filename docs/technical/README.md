@@ -13,6 +13,9 @@ Deep technical documentation for developers, architects, and technical contribut
 - **[PLUGIN_BOT_ARCHITECTURE_RESEARCH.md](./PLUGIN_BOT_ARCHITECTURE_RESEARCH.md)** - Extensive research and design for Discord-like plugin and bot support system
 - **[IMPLEMENTATION_GUIDE.md](./IMPLEMENTATION_GUIDE.md)** - General implementation guidelines and GitHub Actions setup
 
+### UI/UX & Design System
+- **[CHAT_UI_UX_DESIGN_SYSTEM.md](./CHAT_UI_UX_DESIGN_SYSTEM.md)** - Comprehensive UI/UX patterns, accessibility standards, and design system for modern chat applications with SvelteKit
+
 ## 🎯 Technical Focus Areas
 
 ### Real-Time Communication
