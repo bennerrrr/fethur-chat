@@ -14,3 +14,10 @@ export { default as Modal } from './Modal.svelte';
 export { default as Dropdown } from './Dropdown.svelte';
 export { default as Badge } from './Badge.svelte';
 export { default as LoadingSpinner } from './LoadingSpinner.svelte';
+
+// Enhanced prototype components
+export { default as EnhancedMessage } from './EnhancedMessage.svelte';
+export { default as EnhancedMessageInput } from './EnhancedMessageInput.svelte';
+export { default as EnhancedChatArea } from './EnhancedChatArea.svelte';
+export { default as EnhancedVoiceControls } from './EnhancedVoiceControls.svelte';
+export { default as ReactionPicker } from './ReactionPicker.svelte';
