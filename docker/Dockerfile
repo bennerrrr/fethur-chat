@@ -1,5 +1,5 @@
 # Build frontend
-FROM node:18-alpine AS web-builder
+FROM node:24-alpine AS web-builder
 WORKDIR /web
 COPY client/web/package.json client/web/pnpm-lock.yaml ./
 RUN npm install -g pnpm && pnpm install
