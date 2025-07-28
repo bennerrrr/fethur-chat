@@ -1,6 +1,7 @@
 package voice
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -58,9 +59,7 @@ func NewVoiceHub() *VoiceHub {
 }
 
 func (h *VoiceHub) Run() {
-	done := make(chan struct{})
-	defer close(done)
-
+	ctx := context.Background()
 	for {
 		select {
 		case client := <-h.register:
@@ -81,7 +80,7 @@ func (h *VoiceHub) Run() {
 		case message := <-h.signal:
 			h.handleSignaling(message)
 
-		case <-done:
+		case <-ctx.Done():
 			return
 		}
 	}
