@@ -57,8 +57,10 @@ func NewVoiceHub() *VoiceHub {
 	}
 }
 
-//nolint:staticcheck
 func (h *VoiceHub) Run() {
+	done := make(chan struct{})
+	defer close(done)
+
 	for {
 		select {
 		case client := <-h.register:
@@ -78,6 +80,9 @@ func (h *VoiceHub) Run() {
 
 		case message := <-h.signal:
 			h.handleSignaling(message)
+
+		case <-done:
+			return
 		}
 	}
 }
