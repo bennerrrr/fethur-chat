@@ -333,6 +333,7 @@ func (m *Manager) loadManifest(pluginPath string) (*PluginManifest, error) {
 		return nil, fmt.Errorf("manifest file must be a YAML file")
 	}
 
+	//nolint:gosec // Path is validated to be within plugin directory and must be YAML file
 	data, err := os.ReadFile(manifestPath)
 	if err != nil {
 		return nil, err

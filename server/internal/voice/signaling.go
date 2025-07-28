@@ -59,7 +59,7 @@ func NewVoiceHub() *VoiceHub {
 
 func (h *VoiceHub) Run() {
 	//nolint:staticcheck // This is the correct pattern for a WebSocket hub with multiple channels
-	for {
+	for { //nolint:staticcheck
 		select {
 		case client := <-h.register:
 			h.mutex.Lock()
