@@ -144,10 +144,20 @@ class ApiClient {
 
 	// Server methods
 	async getServers(): Promise<Server[]> {
-		const response = await this.request<Server[]>('/api/servers');
+		const response = await this.request<{ servers: any[] }>('/api/servers');
 		
 		if (response.success && response.data) {
-			return response.data;
+			// Transform backend response to frontend format
+			return response.data.servers.map((server: any) => ({
+				id: server.id,
+				name: server.name,
+				description: server.description,
+				icon: server.icon,
+				ownerId: server.owner_id,
+				memberCount: 0, // Backend doesn't provide this yet
+				channels: [], // Will be loaded separately
+				createdAt: new Date(server.created_at)
+			}));
 		}
 
 		throw new ApiError(500, 'Failed to fetch servers');
@@ -178,10 +188,19 @@ class ApiClient {
 
 	// Channel methods
 	async getChannels(serverId: number): Promise<Channel[]> {
-		const response = await this.request<Channel[]>(`/api/servers/${serverId}/channels`);
+		const response = await this.request<{ channels: any[] }>(`/api/servers/${serverId}/channels`);
 		
 		if (response.success && response.data) {
-			return response.data;
+			// Transform backend response to frontend format
+			return response.data.channels.map((channel: any) => ({
+				id: channel.id,
+				name: channel.name,
+				description: channel.description,
+				type: channel.channel_type,
+				serverId: serverId,
+				position: 0, // Backend doesn't provide this yet
+				createdAt: new Date(channel.created_at)
+			}));
 		}
 
 		throw new ApiError(500, 'Failed to fetch channels');

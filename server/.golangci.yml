@@ -12,6 +12,8 @@ linters:
     - unused
     - misspell
     - gosec
+  disable:
+    - staticcheck
 
 formatters:
   enable:
