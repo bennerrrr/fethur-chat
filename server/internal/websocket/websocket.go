@@ -128,7 +128,9 @@ func (c *Client) Start() {
 func (c *Client) readPump() {
 	defer func() {
 		c.hub.unregister <- c
-		c.conn.Close()
+		if err := c.conn.Close(); err != nil {
+			log.Printf("Error closing websocket connection: %v", err)
+		}
 	}()
 
 	c.conn.SetReadLimit(512) // 512 bytes max message size
@@ -187,7 +189,9 @@ func (c *Client) writePump() {
 	ticker := time.NewTicker(54 * time.Second)
 	defer func() {
 		ticker.Stop()
-		c.conn.Close()
+		if err := c.conn.Close(); err != nil {
+			log.Printf("Error closing websocket connection: %v", err)
+		}
 	}()
 
 	for {

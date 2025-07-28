@@ -10,7 +10,11 @@ func TestInit(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to initialize database: %v", err)
 	}
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Logf("Error closing database: %v", err)
+		}
+	}()
 
 	// Test that we can ping the database
 	if err := db.Ping(); err != nil {
@@ -29,14 +33,22 @@ func TestDatabaseConnection(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to initialize database: %v", err)
 	}
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Logf("Error closing database: %v", err)
+		}
+	}()
 
 	// Test basic query
 	rows, err := db.Query("SELECT 1")
 	if err != nil {
 		t.Fatalf("Failed to execute basic query: %v", err)
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			t.Logf("Error closing rows: %v", err)
+		}
+	}()
 
 	if !rows.Next() {
 		t.Error("Expected at least one row from SELECT 1")

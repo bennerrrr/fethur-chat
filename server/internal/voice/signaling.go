@@ -58,6 +58,7 @@ func NewVoiceHub() *VoiceHub {
 }
 
 func (h *VoiceHub) Run() {
+	//nolint:staticcheck // This is the correct pattern for a WebSocket hub with multiple channels
 	for {
 		select {
 		case client := <-h.register:
@@ -258,7 +259,9 @@ func (h *VoiceHub) broadcastToRoom(roomID int64, message *SignalingMessage, excl
 func (c *VoiceClient) readPump() {
 	defer func() {
 		c.hub.unregister <- c
-		c.conn.Close()
+		if err := c.conn.Close(); err != nil {
+			log.Printf("Error closing voice client connection: %v", err)
+		}
 	}()
 
 	for {
@@ -278,16 +281,23 @@ func (c *VoiceClient) readPump() {
 }
 
 func (c *VoiceClient) writePump() {
-	defer c.conn.Close()
+	defer func() {
+		if err := c.conn.Close(); err != nil {
+			log.Printf("Error closing voice client connection: %v", err)
+		}
+	}()
 
 	for {
 		select {
 		case message, ok := <-c.send:
 			if !ok {
-				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+				if err := c.conn.WriteMessage(websocket.CloseMessage, []byte{}); err != nil {
+					log.Printf("Error writing close message: %v", err)
+				}
 				return
 			}
 			if err := c.conn.WriteMessage(websocket.TextMessage, message); err != nil {
+				log.Printf("Error writing message: %v", err)
 				return
 			}
 		}

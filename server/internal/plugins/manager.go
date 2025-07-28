@@ -302,12 +302,12 @@ func (m *Manager) loadManifest(pluginPath string) (*PluginManifest, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid plugin path: %w", err)
 	}
-	
+
 	absPluginDir, err := filepath.Abs(m.config.PluginDir)
 	if err != nil {
 		return nil, fmt.Errorf("invalid plugin directory: %w", err)
 	}
-	
+
 	// Ensure the plugin path is within the plugin directory
 	if !strings.HasPrefix(absPluginPath, absPluginDir) {
 		return nil, fmt.Errorf("plugin path outside allowed directory")
@@ -323,9 +323,14 @@ func (m *Manager) loadManifest(pluginPath string) (*PluginManifest, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid manifest path: %w", err)
 	}
-	
+
 	if !strings.HasPrefix(absManifestPath, absPluginDir) {
 		return nil, fmt.Errorf("manifest path outside allowed directory")
+	}
+
+	// Additional security check: ensure the file is actually a YAML file
+	if !strings.HasSuffix(manifestPath, ".yaml") && !strings.HasSuffix(manifestPath, ".yml") {
+		return nil, fmt.Errorf("manifest file must be a YAML file")
 	}
 
 	data, err := os.ReadFile(manifestPath)
