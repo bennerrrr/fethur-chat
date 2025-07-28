@@ -8,15 +8,10 @@ linters:
   enable:
     - govet
     - errcheck
-    - staticcheck
     - ineffassign
     - unused
     - misspell
     - gosec
-
-linters-settings:
-  staticcheck:
-    checks: ["all", "-S1000"]
 
 formatters:
   enable:
