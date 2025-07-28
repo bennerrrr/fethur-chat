@@ -133,10 +133,17 @@ class ApiClient {
 
 	// User methods
 	async getCurrentUser(): Promise<User> {
-		const response = await this.request<User>('/api/auth/me');
+		const response = await this.request<{ data: any; success: boolean }>('/api/auth/me') as any;
 		
-		if (response.success && response.data) {
-			return response.data;
+		// Backend returns { data: {...}, success: true }
+		if (response && response.success && response.data) {
+			return {
+				id: response.data.id,
+				username: response.data.username,
+				email: response.data.email,
+				isOnline: true,
+				createdAt: new Date(response.data.created_at || new Date())
+			};
 		}
 
 		throw new ApiError(401, 'Failed to get current user');
@@ -144,11 +151,12 @@ class ApiClient {
 
 	// Server methods
 	async getServers(): Promise<Server[]> {
-		const response = await this.request<{ servers: any[] }>('/api/servers');
+		const response = await this.request<{ servers: any[] }>('/api/servers') as any;
 		
-		if (response.success && response.data) {
+		// Backend returns { servers: [...] } directly
+		if (response && response.servers) {
 			// Transform backend response to frontend format
-			return response.data.servers.map((server: any) => ({
+			return response.servers.map((server: any) => ({
 				id: server.id,
 				name: server.name,
 				description: server.description,
@@ -188,11 +196,12 @@ class ApiClient {
 
 	// Channel methods
 	async getChannels(serverId: number): Promise<Channel[]> {
-		const response = await this.request<{ channels: any[] }>(`/api/servers/${serverId}/channels`);
+		const response = await this.request<{ channels: any[] }>(`/api/servers/${serverId}/channels`) as any;
 		
-		if (response.success && response.data) {
+		// Backend returns { channels: [...] } directly
+		if (response && response.channels) {
 			// Transform backend response to frontend format
-			return response.data.channels.map((channel: any) => ({
+			return response.channels.map((channel: any) => ({
 				id: channel.id,
 				name: channel.name,
 				description: channel.description,
@@ -225,16 +234,17 @@ class ApiClient {
 		if (options.limit) params.append('limit', options.limit.toString());
 		if (options.before) params.append('before', options.before.toString());
 
-		const response = await this.request<{ messages: any[] }>(`/api/channels/${channelId}/messages?${params}`);
+		const response = await this.request<{ messages: any[] }>(`/api/channels/${channelId}/messages?${params}`) as any;
 		
-		if (response.success && response.data) {
+		// Backend returns { messages: [...] } directly
+		if (response && response.messages) {
 			// Transform backend response to frontend format
-			const messages = response.data.messages.map((msg: any) => ({
+			const messages = response.messages.map((msg: any) => ({
 				id: msg.id,
 				content: msg.content,
-				authorId: 0, // Backend doesn't provide this yet
+				authorId: msg.user_id || 0,
 				author: {
-					id: 0,
+					id: msg.user_id || 0,
 					username: msg.username,
 					email: '',
 					isOnline: true,
@@ -258,10 +268,10 @@ class ApiClient {
 		const response = await this.request<{ data: any }>(`/api/channels/${channelId}/messages`, {
 			method: 'POST',
 			body: JSON.stringify({ content: messageData.content })
-		});
+		}) as any;
 
 		if (response.success && response.data) {
-			const msg = response.data.data; // Backend returns { data: { ... } }
+			const msg = response.data; // Backend returns { success: true, data: {...} }
 			return {
 				id: msg.id,
 				content: msg.content,

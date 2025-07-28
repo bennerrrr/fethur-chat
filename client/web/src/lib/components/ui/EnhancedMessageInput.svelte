@@ -29,7 +29,7 @@
 		if (!canSend) return;
 
 		const messageContent = content.trim();
-		const replyToId = $replyingTo?.id;
+		const replyToId = $replyingTo && typeof $replyingTo === 'object' && 'id' in $replyingTo ? $replyingTo.id : undefined;
 
 		// Clear input immediately for better UX
 		content = '';
@@ -94,7 +94,7 @@
 			console.log('File uploaded:', file.name);
 			
 			// Send message with file attachment
-			await chatActions.sendMessage(channelId, `📎 ${file.name}`, $replyingTo?.id);
+			await chatActions.sendMessage(channelId, `📎 ${file.name}`, $replyingTo && typeof $replyingTo === 'object' && 'id' in $replyingTo ? $replyingTo.id : undefined);
 
 		} catch (error) {
 			console.error('Failed to upload file:', error);

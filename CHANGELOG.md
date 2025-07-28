@@ -1,161 +1,116 @@
 # Changelog
 
-All notable changes to Feathur will be documented in this file.
+All notable changes to the Feathur project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [1.2.0] - 2025-07-28
+
+### ✅ **Chat System Fully Functional**
+- **Fixed message loading** - Resolved API response parsing issues
+- **Fixed message sending** - Corrected response structure handling
+- **Fixed WebSocket connection** - Improved real-time communication
+- **Fixed authentication flow** - Resolved token handling issues
+- **Fixed CORS issues** - Added proper CORS middleware
+- **Fixed network access** - Support for both localhost and network IPs
+
+### 🔧 **API Client Improvements**
+- **Enhanced error handling** - Better error messages and debugging
+- **Fixed response parsing** - Correct handling of backend responses
+- **Improved type safety** - Better TypeScript support
+- **Added defensive programming** - Safer property access
+
+### 🎨 **UI/UX Enhancements**
+- **Fixed message input** - Resolved `msg.id` undefined errors
+- **Improved chat interface** - Better message display and interaction
+- **Enhanced error feedback** - Clear error messages for users
+- **Fixed accessibility issues** - Better ARIA support
+
+### 🔒 **Authentication Fixes**
+- **Fixed superadmin login** - Corrected password hash
+- **Improved token management** - Better JWT handling
+- **Enhanced security** - Proper bcrypt password hashing
+- **Fixed guest mode** - Improved guest authentication flow
+
+### 🛠️ **Backend Stability**
+- **Fixed WebSocket handling** - Improved message broadcasting
+- **Enhanced error logging** - Better debugging information
+- **Fixed database queries** - Improved data persistence
+- **Added health checks** - Better system monitoring
+
+### 📚 **Documentation Updates**
+- **Updated README** - Comprehensive feature overview
+- **Added troubleshooting guide** - Common issues and solutions
+- **Enhanced API documentation** - Complete endpoint reference
+- **Added usage examples** - Step-by-step guides
 
 ## [1.1.0] - 2025-07-28
 
-### Added
-- **Guest Mode**: Allow users to access chat without authentication (admin-controlled)
-- **Auto-Login**: Automatic authentication with default credentials (admin-controlled)
-- **Admin Settings Panel**: Web-based configuration interface at `/admin`
-- **Role-Based Access Control**: User, Admin, and Super Admin roles
-- **Real-time Messaging**: Complete message sending and receiving functionality
-- **WebSocket Integration**: Real-time message broadcasting to all connected clients
-- **CORS Support**: Proper cross-origin request handling
-- **API Documentation**: Comprehensive API documentation with examples
-- **User Guide**: Complete user guide with troubleshooting and best practices
+### ✨ **New Features**
+- **Guest Mode** - Allow users to access chat without registration (admin-controlled)
+- **Auto-Login** - Automatic authentication with default credentials (admin-controlled)
+- **Admin Settings Panel** - Web-based configuration interface
+- **Role-Based Access Control** - User, Admin, and Super Admin roles
+- **Real-time Messaging** - WebSocket-based instant messaging
+- **Server & Channel Management** - Create and manage servers with multiple channels
 
-### Changed
-- **Authentication Flow**: Improved authentication with proper token management
-- **Frontend Architecture**: Updated to use proper API client with authentication
-- **Backend API**: Enhanced with new endpoints for admin settings and guest access
-- **Database Schema**: Added settings table for admin configuration
-- **Error Handling**: Improved error messages and handling throughout the application
+### 🔧 **Technical Improvements**
+- **JWT Authentication** - Secure token-based authentication
+- **CORS Support** - Cross-origin request handling
+- **Database Persistence** - SQLite database with proper schema
+- **WebSocket Integration** - Real-time communication
+- **Error Handling** - Comprehensive error management
 
-### Fixed
-- **CORS Issues**: Fixed cross-origin request blocking between frontend and backend
-- **Authentication Endpoints**: Fixed missing `/api/auth/me` endpoint
-- **Port Configuration**: Updated default backend port from 8080 to 8081
-- **Frontend-Backend Communication**: Fixed API client configuration and token handling
-- **Message Sending**: Implemented proper message storage and retrieval
-- **WebSocket Connection**: Fixed WebSocket authentication and message broadcasting
+### 🎨 **UI Components**
+- **Enhanced Chat Interface** - Modern, responsive design
+- **Message Components** - Rich message display
+- **Input Components** - Advanced message input with file support
+- **Server/Channel Lists** - Intuitive navigation
+- **Admin Panel** - Settings management interface
 
-### Security
-- **JWT Token Management**: Proper token validation and expiration handling
-- **Password Requirements**: Enforced strong password requirements (9+ chars, numbers, special chars)
-- **Admin Access Control**: Role-based access to admin features
-- **Guest Mode Security**: Admin-controlled guest access with security warnings
-- **CORS Configuration**: Secure cross-origin request handling
+### 📚 **Documentation**
+- **API Documentation** - Complete endpoint reference
+- **User Guide** - Step-by-step usage instructions
+- **Installation Guide** - Setup and configuration
+- **Troubleshooting** - Common issues and solutions
 
-### Technical Details
+## [1.0.0] - 2025-07-28
 
-#### New API Endpoints
-- `POST /api/auth/guest` - Guest login (requires guest mode enabled)
-- `GET /api/auth/me` - Get current user information
-- `GET /api/settings` - Get admin settings (admin only)
-- `POST /api/settings` - Update admin settings (admin only)
-- `POST /api/channels/:id/messages` - Send message to channel
+### 🎉 **Initial Release**
+- **Basic Chat Functionality** - Text messaging between users
+- **User Authentication** - Login and registration system
+- **Server Management** - Create and join servers
+- **Channel System** - Text channels within servers
+- **Real-time Updates** - WebSocket-based live updates
+- **Responsive Design** - Works on desktop and mobile
 
-#### Database Changes
-- Added `settings` table for storing admin configuration
-- Enhanced user roles with `super_admin` support
-- Improved message storage with proper indexing
-
-#### Frontend Enhancements
-- Added admin settings panel with beautiful UI
-- Implemented guest login button on homepage
-- Enhanced chat interface with real-time messaging
-- Added proper error handling and user feedback
-- Improved authentication flow with token management
-
-#### Backend Improvements
-- Added CORS middleware for cross-origin requests
-- Implemented proper JWT token validation
-- Enhanced WebSocket message broadcasting
-- Added comprehensive error handling
-- Improved database operations with proper transactions
-
-### Breaking Changes
-- **Port Change**: Backend now runs on port 8081 instead of 8080
-- **API Response Format**: Some endpoints now return standardized response format with `success` and `data` fields
-- **Authentication**: All authenticated endpoints now require proper JWT tokens
-
-### Migration Guide
-1. **Update Frontend Configuration**: Change backend URL from port 8080 to 8081
-2. **Database Migration**: New settings table will be created automatically
-3. **Admin Setup**: Create super admin account and configure guest mode settings
-4. **API Updates**: Update any external API clients to use new response formats
-
-## [1.0.0] - 2025-07-27
-
-### Added
-- **Basic Chat Functionality**: Real-time messaging with WebSocket support
-- **User Authentication**: JWT-based user registration and login
-- **Server Management**: Create and manage chat servers
-- **Channel Management**: Create text and voice channels within servers
-- **SQLite Database**: Local data storage with proper schema
-- **RESTful API**: Complete API for all chat operations
-- **SvelteKit Frontend**: Modern web interface with TypeScript
-- **Docker Support**: Containerized deployment with Docker Compose
-- **Development Tools**: Makefile with common development commands
-
-### Technical Features
-- **WebSocket Communication**: Real-time message delivery
-- **JWT Authentication**: Secure token-based authentication
-- **Password Hashing**: bcrypt password security
-- **CORS Support**: Cross-origin request handling
-- **Error Handling**: Comprehensive error management
-- **Logging**: Structured logging throughout the application
-
-### Project Structure
-- **Go Backend**: Clean architecture with internal packages
-- **SvelteKit Frontend**: Modern reactive web interface
-- **Documentation**: Comprehensive project documentation
-- **CI/CD**: GitHub Actions for automated testing and deployment
+### 🛠️ **Core Technology**
+- **Go Backend** - High-performance server
+- **SvelteKit Frontend** - Modern web framework
+- **SQLite Database** - Lightweight data storage
+- **WebSocket Communication** - Real-time messaging
+- **JWT Authentication** - Secure user sessions
 
 ---
 
 ## Version History
 
-### Version Numbering
-- **Major Version**: Breaking changes or major feature additions
-- **Minor Version**: New features or significant improvements
-- **Patch Version**: Bug fixes and minor improvements
+- **1.2.0** - Chat system fully functional with all fixes
+- **1.1.0** - Authentication and admin features
+- **1.0.0** - Initial release with basic chat functionality
 
-### Release Schedule
-- **Development**: Continuous development with regular commits
-- **Beta Releases**: Feature-complete releases for testing
-- **Stable Releases**: Production-ready releases with full documentation
+## Future Plans
 
-### Support Policy
-- **Current Version**: Full support and bug fixes
-- **Previous Version**: Security updates only
-- **Older Versions**: No official support
+### 🚀 **Upcoming Features**
+- **Voice Channels** - WebRTC-powered voice communication
+- **File Sharing** - Enhanced file upload and sharing
+- **Message Reactions** - Emoji reactions on messages
+- **User Profiles** - Detailed user profiles and avatars
+- **Mobile App** - Native mobile applications
+- **Plugin System** - Extensible bot and plugin architecture
 
----
-
-## Contributing
-
-When contributing to this project, please update the changelog to reflect your changes. Follow the existing format and include:
-
-1. **Type of Change**: Added, Changed, Deprecated, Removed, Fixed, Security
-2. **Description**: Clear description of what was changed
-3. **Technical Details**: Any important technical information
-4. **Breaking Changes**: Any changes that require user action
-5. **Migration Guide**: Steps to upgrade from previous version
-
-### Changelog Format
-```markdown
-## [Version] - YYYY-MM-DD
-
-### Added
-- New features
-
-### Changed
-- Changes to existing functionality
-
-### Deprecated
-- Soon-to-be removed features
-
-### Removed
-- Removed features
-
-### Fixed
-- Bug fixes
-
-### Security
-- Security improvements
-``` 
+### 🔧 **Technical Roadmap**
+- **Performance Optimization** - Improved scalability
+- **Security Enhancements** - Advanced security features
+- **Database Migration** - Support for PostgreSQL/MySQL
+- **Containerization** - Docker and Kubernetes support
+- **Monitoring** - Advanced logging and monitoring
+- **Testing** - Comprehensive test coverage 

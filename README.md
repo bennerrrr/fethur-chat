@@ -1,48 +1,93 @@
-# Feathur - Lightweight Discord Alternative
+# Feathur - Modern Chat & Voice Platform
 
-A modern, self-hosted chat application built with Go (backend) and SvelteKit (frontend), featuring real-time messaging, voice channels, and admin-controlled authentication.
+A real-time chat and voice communication platform built with Go (backend) and SvelteKit (frontend).
 
-## 🚀 Features
+## 🚀 Recent Updates (Latest)
+
+### ✅ **Chat System Fully Functional**
+- **Real-time messaging** with WebSocket support
+- **Message history** loading and persistence
+- **User authentication** with JWT tokens
+- **Server and channel management**
+- **Cross-platform compatibility** (localhost and network access)
+
+### ✅ **Authentication System Enhanced**
+- **Guest mode** with admin controls
+- **Auto-login** with default credentials
+- **Role-based access** (user, admin, super_admin)
+- **Secure password hashing** with bcrypt
+- **Token-based authentication** with JWT
+
+### ✅ **UI/UX Improvements**
+- **Modern chat interface** with enhanced components
+- **Real-time typing indicators**
+- **Message reactions and replies**
+- **File upload support** (drag & drop)
+- **Responsive design** for all devices
+
+### ✅ **Backend Stability**
+- **CORS support** for cross-origin requests
+- **WebSocket real-time communication**
+- **Database persistence** with SQLite
+- **Error handling** and logging
+- **Health check endpoints**
+
+## 🎯 Features
 
 ### Core Chat Features
-- **Real-time Messaging**: WebSocket-based instant messaging
-- **Server & Channel Management**: Create and manage servers with multiple channels
-- **User Authentication**: JWT-based authentication with role-based access
-- **Voice Channels**: WebRTC-powered voice communication (coming soon)
+- ✅ **Real-time messaging** with WebSocket
+- ✅ **Message history** and persistence
+- ✅ **User authentication** and authorization
+- ✅ **Server and channel management**
+- ✅ **Typing indicators**
+- ✅ **Message reactions**
+- ✅ **File attachments** (drag & drop)
+- ✅ **Message replies**
 
-### Authentication & Access Control
-- **Guest Mode**: Allow users to access chat without registration (admin-controlled)
-- **Auto-Login**: Automatic authentication with default credentials (admin-controlled)
-- **Role-Based Access**: User, Admin, and Super Admin roles
-- **Admin Settings Panel**: Web-based configuration interface
+### Authentication & Security
+- ✅ **JWT token authentication**
+- ✅ **Role-based access control** (user, admin, super_admin)
+- ✅ **Guest mode** (admin configurable)
+- ✅ **Auto-login** with default credentials
+- ✅ **Secure password hashing** (bcrypt)
+- ✅ **CORS support** for cross-origin requests
 
 ### Admin Features
-- **Settings Management**: Configure guest mode, auto-login, and default credentials
-- **User Management**: View and manage user accounts
-- **Server Administration**: Create and manage servers and channels
-- **Real-time Monitoring**: Monitor active users and system status
+- ✅ **Guest mode toggle**
+- ✅ **Auto-login configuration**
+- ✅ **Default credentials management**
+- ✅ **User management**
+- ✅ **Server and channel creation**
+
+### Voice Features (Planned)
+- 🔄 **WebRTC voice channels**
+- 🔄 **Push-to-talk**
+- 🔄 **Voice activity detection**
+- 🔄 **Audio device management**
 
 ## 🛠️ Technology Stack
 
 ### Backend
-- **Go** with Gin framework
-- **SQLite** database
-- **WebSocket** for real-time communication
-- **JWT** for authentication
-- **CORS** enabled for cross-origin requests
+- **Go** - High-performance server language
+- **Gin** - Web framework
+- **SQLite** - Database
+- **JWT** - Authentication
+- **WebSocket** - Real-time communication
+- **Bcrypt** - Password hashing
 
 ### Frontend
-- **SvelteKit** with TypeScript
-- **Tailwind CSS** for styling
-- **Vite** for development and building
-- **pnpm** for package management
+- **SvelteKit** - Modern web framework
+- **TypeScript** - Type safety
+- **Tailwind CSS** - Styling
+- **WebSocket** - Real-time updates
+- **Vite** - Build tool
 
 ## 📦 Installation
 
 ### Prerequisites
 - Go 1.21+
 - Node.js 18+
-- pnpm (recommended) or npm
+- pnpm (recommended)
 
 ### Quick Start
 
@@ -52,95 +97,76 @@ A modern, self-hosted chat application built with Go (backend) and SvelteKit (fr
    cd Feathur
    ```
 
-2. **Install dependencies**
+2. **Start the backend**
    ```bash
-   # Install Go dependencies
-   make deps
-   
-   # Install frontend dependencies
-   cd client && ./setup.sh install
+   cd server
+   go run cmd/server/main.go
    ```
+   Backend will start on `http://localhost:8081`
 
-3. **Start the application**
+3. **Start the frontend**
    ```bash
-   # Start both backend and frontend
-   make dev
+   cd client/web
+   pnpm install
+   pnpm dev
    ```
+   Frontend will start on `http://localhost:5174`
 
 4. **Access the application**
-   - Frontend: http://localhost:5173
-   - Backend API: http://localhost:8081
-   - Admin Panel: http://localhost:5173/admin
+   - **Local**: `http://localhost:5174`
+   - **Network**: `http://192.168.1.23:5174` (if configured)
 
 ## 🔧 Configuration
 
-### Initial Setup
-On first run, the application will guide you through a setup wizard to configure:
-- Network settings (hostname, port, SSL)
-- Authentication mode
-- Admin account creation
-- Optional default user account
+### Environment Variables
 
-### Admin Settings
-Access the admin panel at `/admin` to configure:
+Create `.env` file in `client/web/`:
+```bash
+PUBLIC_API_URL=http://192.168.1.23:8081
+PUBLIC_WS_URL=ws://192.168.1.23:8081
+PUBLIC_DEV_MODE=true
+PUBLIC_LOG_LEVEL=debug
+```
 
-#### Authentication Settings
-- **Guest Mode**: Enable/disable access without authentication
-- **Auto-Login**: Enable automatic login with default credentials
-- **Default Username**: Username for auto-login
-- **Default Password**: Password for auto-login
+### Default Users
 
-#### Security Notes
-- Auto-login should only be used in development or controlled environments
-- Default credentials are stored in the database and can be changed via admin panel
-- Guest mode bypasses authentication entirely
+The system comes with pre-configured users:
+- **superadmin** / **password123!** (super_admin role)
+- **testuser** / **password123!** (user role)
 
-### Default Credentials
-- **Super Admin**: `superadmin` / `superadmin123!`
-- **Auto-Login User**: `testuser` / `password123!` (configurable)
+## 🎮 Usage
 
-## 🎯 Usage
+### Getting Started
 
-### For Users
+1. **Login** with default credentials
+2. **Create or join** a server
+3. **Join channels** to start chatting
+4. **Send messages** in real-time
+5. **Use reactions** and replies
 
-#### Guest Access
-1. Visit the application homepage
-2. Click "Continue as Guest"
-3. Automatically logged in with default credentials
-4. Start chatting immediately
+### Admin Features
 
-#### Regular Login
-1. Visit the application homepage
-2. Enter username and password
-3. Click "Login"
-4. Access chat interface
+1. **Access admin panel** at `/admin`
+2. **Configure guest mode** settings
+3. **Set up auto-login** credentials
+4. **Manage users** and permissions
 
-### For Admins
+### Chat Features
 
-#### Access Admin Panel
-1. Login with admin or super admin credentials
-2. Navigate to `/admin`
-3. Configure authentication settings
-4. Manage users and servers
-
-#### Configure Guest Mode
-1. Go to Admin Panel → Authentication Settings
-2. Enable "Guest Mode"
-3. Enable "Auto Login" (optional)
-4. Set default credentials if using auto-login
-5. Save settings
+- **Real-time messaging** - Messages appear instantly
+- **Message history** - Load previous conversations
+- **Typing indicators** - See when others are typing
+- **File uploads** - Drag and drop files
+- **Message reactions** - React with emojis
+- **Message replies** - Reply to specific messages
 
 ## 🔌 API Endpoints
 
 ### Authentication
-- `POST /api/auth/register` - User registration
 - `POST /api/auth/login` - User login
-- `POST /api/auth/guest` - Guest login (requires guest mode enabled)
-- `GET /api/auth/me` - Get current user info
-
-### Admin Settings
-- `GET /api/settings` - Get all settings (admin only)
-- `POST /api/settings` - Update settings (admin only)
+- `POST /api/auth/register` - User registration
+- `POST /api/auth/guest` - Guest login
+- `GET /api/auth/me` - Get current user
 
 ### Servers & Channels
 - `GET /api/servers` - List servers
@@ -148,100 +174,77 @@ Access the admin panel at `/admin` to configure:
 - `GET /api/servers/:id/channels` - List channels
 - `POST /api/servers/:id/channels` - Create channel
 
-### Messaging
+### Messages
 - `GET /api/channels/:id/messages` - Get messages
 - `POST /api/channels/:id/messages` - Send message
-- `GET /ws` - WebSocket connection for real-time messaging
 
-### System
+### WebSocket
+- `GET /ws?token=<jwt>` - WebSocket connection
+
+### Health
 - `GET /health` - Health check
-- `GET /api/setup/status` - Setup status
-- `POST /api/setup/configure` - Configure system
 
-## 🏗️ Development
+## 🐛 Troubleshooting
 
-### Project Structure
+### Common Issues
+
+1. **"Backend Server Offline"**
+   - Ensure backend is running on port 8081
+   - Check `.env` configuration
+   - Verify network connectivity
+
+2. **"Failed to load messages"**
+   - Check authentication token
+   - Verify channel exists
+   - Check browser console for errors
+
+3. **"Failed to send message"**
+   - Ensure user is authenticated
+   - Check channel permissions
+   - Verify WebSocket connection
+
+4. **CORS Errors**
+   - Backend includes CORS middleware
+   - Check frontend URL configuration
+   - Verify API endpoints
+
+### Debug Tools
+
+- **Debug Page**: `http://192.168.1.23:5174/debug`
+- **Health Check**: `http://192.168.1.23:8081/health`
+- **Browser Console**: Check for JavaScript errors
+
+## 📁 Project Structure
+
 ```
 Feathur/
 ├── server/                 # Go backend
-│   ├── cmd/server/        # Main application entry
+│   ├── cmd/server/        # Main application
 │   ├── internal/          # Internal packages
-│   │   ├── auth/         # Authentication logic
+│   │   ├── auth/         # Authentication
 │   │   ├── database/     # Database operations
-│   │   ├── server/       # HTTP server and routes
+│   │   ├── server/       # HTTP server
 │   │   ├── websocket/    # WebSocket handling
-│   │   └── voice/        # Voice channel logic
-│   └── data/             # SQLite database
-├── client/                # SvelteKit frontend
-│   └── web/
-│       ├── src/
-│       │   ├── lib/      # Shared libraries
-│       │   │   ├── api/  # API client
-│       │   │   ├── components/ # UI components
-│       │   │   └── stores/     # State management
-│       │   └── routes/   # Page routes
-│       └── static/       # Static assets
+│   │   └── voice/        # Voice features
+│   └── data/             # Database files
+├── client/web/            # SvelteKit frontend
+│   ├── src/
+│   │   ├── lib/          # Shared libraries
+│   │   │   ├── api/      # API client
+│   │   │   ├── components/ # UI components
+│   │   │   ├── stores/   # State management
+│   │   │   └── types/    # TypeScript types
+│   │   └── routes/       # Page routes
+│   └── static/           # Static assets
 └── docs/                 # Documentation
 ```
-
-### Development Commands
-```bash
-# Start development servers
-make dev
-
-# Run tests
-make test
-
-# Build for production
-make build
-
-# Clean build artifacts
-make clean
-```
-
-### Environment Variables
-Create a `.env` file in `client/web/`:
-```env
-PUBLIC_API_URL=http://localhost:8081
-PUBLIC_WS_URL=ws://localhost:8081
-PUBLIC_DEV_MODE=true
-PUBLIC_LOG_LEVEL=debug
-```
-
-## 🔒 Security
-
-### Authentication
-- JWT tokens with 24-hour expiration
-- Password requirements: minimum 9 characters, numbers, and special characters
-- Role-based access control (user, admin, super_admin)
-- CORS configured for development and production
-
-### Data Protection
-- Passwords hashed with bcrypt
-- SQL injection protection via parameterized queries
-- XSS protection through proper input validation
-- CSRF protection via token validation
-
-## 🚀 Deployment
-
-### Docker Deployment
-```bash
-# Build and run with Docker Compose
-docker-compose up -d
-```
-
-### Manual Deployment
-1. Build the application: `make build`
-2. Set environment variables
-3. Run the server: `./server/fethur-server`
-4. Serve the frontend from `client/web/build/`
 
 ## 🤝 Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Add tests if applicable
+4. Test thoroughly
 5. Submit a pull request
 
 ## 📄 License
@@ -250,24 +253,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🆘 Support
 
-- **Issues**: Report bugs and feature requests on GitHub
-- **Documentation**: Check the `/docs` folder for detailed guides
-- **Discussions**: Use GitHub Discussions for questions and ideas
+For support and questions:
+- Check the [documentation](docs/)
+- Review [troubleshooting guide](#troubleshooting)
+- Open an issue on GitHub
 
-## 🔄 Recent Updates
+---
 
-### v1.1.0 - Authentication & Admin Features
-- ✅ Added guest mode with admin controls
-- ✅ Implemented auto-login functionality
-- ✅ Created admin settings panel
-- ✅ Fixed CORS issues
-- ✅ Added real-time messaging
-- ✅ Implemented proper authentication flow
-- ✅ Added role-based access control
-- ✅ Created comprehensive API documentation
-
-### v1.0.0 - Initial Release
-- ✅ Basic chat functionality
-- ✅ User authentication
-- ✅ Server and channel management
-- ✅ WebSocket real-time communication
+**Feathur** - Building the future of real-time communication 🚀

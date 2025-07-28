@@ -1,165 +1,356 @@
 # Feathur API Documentation
 
-## Overview
+Complete API reference for the Feathur chat platform.
 
-The Feathur API provides a RESTful interface for managing chat servers, channels, messages, and user authentication. All endpoints return JSON responses and use standard HTTP status codes.
+## 🔗 Base URL
 
-**Base URL**: `http://localhost:8081` (development)
+- **Development**: `http://localhost:8081`
+- **Network**: `http://192.168.1.23:8081`
 
-## Authentication
+## 🔐 Authentication
 
-Most endpoints require authentication via JWT tokens. Include the token in the Authorization header:
+All authenticated endpoints require a JWT token in the Authorization header:
 
 ```
-Authorization: Bearer <your-jwt-token>
+Authorization: Bearer <jwt_token>
 ```
 
-### Token Format
-JWT tokens contain user information and expire after 24 hours. They include:
-- `user_id`: User's unique identifier
-- `username`: User's display name
-- `role`: User's role (user, admin, super_admin)
-
-## Endpoints
+## 📋 API Endpoints
 
 ### Authentication
 
-#### Register User
-```http
-POST /api/auth/register
-Content-Type: application/json
+#### POST /api/auth/login
+Login with username and password.
 
+**Request:**
+```json
 {
-  "username": "string",
-  "email": "string",
-  "password": "string"
+  "username": "testuser",
+  "password": "password123!"
 }
 ```
 
-**Response** (201 Created):
+**Response:**
 ```json
 {
-  "token": "jwt-token-string",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
   "user": {
-    "id": 1,
-    "username": "string",
-    "email": "string",
+    "id": 3,
+    "username": "testuser",
+    "email": "",
     "role": "user"
   }
 }
 ```
 
-**Password Requirements**:
-- Minimum 9 characters
-- Must contain at least one number
-- Must contain at least one special character
+#### POST /api/auth/register
+Register a new user account.
 
-#### Login User
-```http
-POST /api/auth/login
-Content-Type: application/json
-
+**Request:**
+```json
 {
-  "username": "string",
-  "password": "string"
+  "username": "newuser",
+  "email": "user@example.com",
+  "password": "password123!"
 }
 ```
 
-**Response** (200 OK):
+**Response:**
 ```json
 {
-  "token": "jwt-token-string",
-  "user": {
-    "id": 1,
-    "username": "string",
-    "email": "string",
+  "success": true,
+  "message": "User registered successfully",
+  "data": {
+    "id": 4,
+    "username": "newuser",
+    "email": "user@example.com",
     "role": "user"
   }
 }
 ```
 
-#### Guest Login
-```http
-POST /api/auth/guest
-Content-Type: application/json
+#### POST /api/auth/guest
+Guest login (requires guest mode enabled).
 
+**Request:**
+```json
 {}
 ```
 
-**Requirements**:
-- Guest mode must be enabled in admin settings
-- Auto-login must be enabled in admin settings
-- Default credentials must be configured
-
-**Response** (200 OK):
+**Response:**
 ```json
 {
-  "token": "jwt-token-string",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
   "user": {
-    "id": 1,
-    "username": "string",
-    "email": "string",
+    "id": 3,
+    "username": "testuser",
+    "email": "",
     "role": "user"
   }
 }
 ```
 
-#### Get Current User
-```http
-GET /api/auth/me
-Authorization: Bearer <token>
+#### GET /api/auth/me
+Get current user information.
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
 ```
 
-**Response** (200 OK):
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": 3,
+    "username": "testuser",
+    "email": "",
+    "role": "user",
+    "created_at": "2025-07-28T19:00:00Z"
+  }
+}
+```
+
+### Servers
+
+#### GET /api/servers
+Get all servers the user has access to.
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Response:**
+```json
+{
+  "servers": [
+    {
+      "id": 1,
+      "name": "Fethur Community",
+      "description": "Official Feathur server",
+      "icon": "",
+      "owner_id": 1,
+      "created_at": "2025-07-28T19:00:00Z"
+    }
+  ]
+}
+```
+
+#### POST /api/servers
+Create a new server.
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Request:**
+```json
+{
+  "name": "My Server",
+  "description": "A new server"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": 2,
+    "name": "My Server",
+    "description": "A new server",
+    "icon": "",
+    "owner_id": 3,
+    "created_at": "2025-07-28T19:00:00Z"
+  }
+}
+```
+
+#### GET /api/servers/:id
+Get server details.
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Response:**
 ```json
 {
   "success": true,
   "data": {
     "id": 1,
-    "username": "string",
-    "email": "string",
-    "role": "user"
+    "name": "Fethur Community",
+    "description": "Official Feathur server",
+    "icon": "",
+    "owner_id": 1,
+    "created_at": "2025-07-28T19:00:00Z"
   }
 }
 ```
 
-### Admin Settings
+### Channels
 
-#### Get Settings
-```http
-GET /api/settings
-Authorization: Bearer <token>
+#### GET /api/servers/:id/channels
+Get all channels in a server.
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
 ```
 
-**Requirements**: Admin or Super Admin role
+**Response:**
+```json
+{
+  "channels": [
+    {
+      "id": 1,
+      "name": "general",
+      "description": "General discussion",
+      "channel_type": "text",
+      "server_id": 1,
+      "created_at": "2025-07-28T19:00:00Z"
+    }
+  ]
+}
+```
 
-**Response** (200 OK):
+#### POST /api/servers/:id/channels
+Create a new channel.
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Request:**
+```json
+{
+  "name": "new-channel",
+  "type": "text",
+  "description": "A new text channel"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": 2,
+    "name": "new-channel",
+    "description": "A new text channel",
+    "channel_type": "text",
+    "server_id": 1,
+    "created_at": "2025-07-28T19:00:00Z"
+  }
+}
+```
+
+### Messages
+
+#### GET /api/channels/:id/messages
+Get messages from a channel.
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Query Parameters:**
+- `limit` (optional): Number of messages to return (default: 50)
+- `before` (optional): Get messages before this ID
+
+**Response:**
+```json
+{
+  "messages": [
+    {
+      "id": 1,
+      "content": "Hello, world!",
+      "username": "testuser",
+      "created_at": "2025-07-28T19:00:00Z"
+    }
+  ]
+}
+```
+
+#### POST /api/channels/:id/messages
+Send a message to a channel.
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Request:**
+```json
+{
+  "content": "Hello, everyone!"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Message sent successfully",
+  "data": {
+    "id": 2,
+    "channel_id": "1",
+    "user_id": 3,
+    "username": "testuser",
+    "content": "Hello, everyone!",
+    "created_at": "2025-07-28T19:00:00Z"
+  }
+}
+```
+
+### Settings (Admin Only)
+
+#### GET /api/settings
+Get all admin settings.
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "guest_mode_enabled": "true",
+    "auto_login_enabled": "true",
+    "default_username": "testuser",
+    "default_password": "password123!"
+  }
+}
+```
+
+#### POST /api/settings
+Update admin settings.
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Request:**
 ```json
 {
   "guest_mode_enabled": "true",
-  "auto_login_enabled": "true",
-  "default_username": "testuser",
-  "default_password": "password123!"
+  "auto_login_enabled": "false",
+  "default_username": "guest",
+  "default_password": "guest123!"
 }
 ```
 
-#### Update Settings
-```http
-POST /api/settings
-Authorization: Bearer <token>
-Content-Type: application/json
-
-{
-  "guest_mode_enabled": true,
-  "auto_login_enabled": true,
-  "default_username": "string",
-  "default_password": "string"
-}
-```
-
-**Requirements**: Admin or Super Admin role
-
-**Response** (200 OK):
+**Response:**
 ```json
 {
   "success": true,
@@ -167,281 +358,102 @@ Content-Type: application/json
 }
 ```
 
-### Servers
-
-#### List Servers
-```http
-GET /api/servers
-Authorization: Bearer <token>
-```
-
-**Response** (200 OK):
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": 1,
-      "name": "string",
-      "description": "string",
-      "owner_id": 1,
-      "created_at": "2025-07-28T17:00:00Z"
-    }
-  ]
-}
-```
-
-#### Create Server
-```http
-POST /api/servers
-Authorization: Bearer <token>
-Content-Type: application/json
-
-{
-  "name": "string",
-  "description": "string"
-}
-```
-
-**Response** (201 Created):
-```json
-{
-  "success": true,
-  "data": {
-    "id": 1,
-    "name": "string",
-    "description": "string",
-    "owner_id": 1,
-    "created_at": "2025-07-28T17:00:00Z"
-  }
-}
-```
-
-#### Get Server
-```http
-GET /api/servers/{id}
-Authorization: Bearer <token>
-```
-
-**Response** (200 OK):
-```json
-{
-  "success": true,
-  "data": {
-    "id": 1,
-    "name": "string",
-    "description": "string",
-    "owner_id": 1,
-    "created_at": "2025-07-28T17:00:00Z"
-  }
-}
-```
-
-### Channels
-
-#### List Channels
-```http
-GET /api/servers/{serverId}/channels
-Authorization: Bearer <token>
-```
-
-**Response** (200 OK):
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": 1,
-      "name": "string",
-      "server_id": 1,
-      "channel_type": "text",
-      "description": "string",
-      "created_at": "2025-07-28T17:00:00Z"
-    }
-  ]
-}
-```
-
-#### Create Channel
-```http
-POST /api/servers/{serverId}/channels
-Authorization: Bearer <token>
-Content-Type: application/json
-
-{
-  "name": "string",
-  "type": "text",
-  "description": "string"
-}
-```
-
-**Response** (201 Created):
-```json
-{
-  "success": true,
-  "data": {
-    "id": 1,
-    "name": "string",
-    "server_id": 1,
-    "channel_type": "text",
-    "description": "string",
-    "created_at": "2025-07-28T17:00:00Z"
-  }
-}
-```
-
-### Messages
-
-#### Get Messages
-```http
-GET /api/channels/{channelId}/messages?page=1&limit=50
-Authorization: Bearer <token>
-```
-
-**Query Parameters**:
-- `page` (optional): Page number (default: 1)
-- `limit` (optional): Messages per page (default: 50, max: 100)
-
-**Response** (200 OK):
-```json
-{
-  "messages": [
-    {
-      "id": 1,
-      "content": "string",
-      "user_id": 1,
-      "username": "string",
-      "created_at": "2025-07-28T17:00:00Z"
-    }
-  ]
-}
-```
-
-#### Send Message
-```http
-POST /api/channels/{channelId}/messages
-Authorization: Bearer <token>
-Content-Type: application/json
-
-{
-  "content": "string"
-}
-```
-
-**Response** (200 OK):
-```json
-{
-  "success": true,
-  "message": "Message sent successfully",
-  "data": {
-    "id": 1,
-    "channel_id": "1",
-    "user_id": 1,
-    "username": "string",
-    "content": "string",
-    "created_at": "2025-07-28T17:00:00Z"
-  }
-}
-```
-
-**Real-time Broadcasting**: Messages are automatically broadcast to all connected WebSocket clients in the same channel.
-
-### WebSocket
-
-#### Connect to WebSocket
-```http
-GET /ws?token=<jwt-token>
-```
-
-**Connection**: WebSocket upgrade from HTTP
-
-**Message Format**:
-```json
-{
-  "type": "message|join|leave|typing|stop_typing",
-  "channel_id": 1,
-  "content": "string",
-  "user_id": 1,
-  "username": "string",
-  "timestamp": "2025-07-28T17:00:00Z",
-  "data": {}
-}
-```
-
-**Message Types**:
-- `message`: New chat message
-- `join`: User joined channel
-- `leave`: User left channel
-- `typing`: User started typing
-- `stop_typing`: User stopped typing
-
 ### System
 
-#### Health Check
-```http
-GET /health
-```
+#### GET /health
+Health check endpoint.
 
-**Response** (200 OK):
+**Response:**
 ```json
 {
-  "status": "healthy",
-  "message": "Fethur Server is running"
+  "message": "Fethur Server is running",
+  "status": "healthy"
 }
 ```
 
-#### Setup Status
-```http
-GET /api/setup/status
-```
+#### GET /api/setup/status
+Get setup status.
 
-**Response** (200 OK):
+**Response:**
 ```json
 {
-  "is_first_time": true,
-  "setup_complete": false
-}
-```
-
-#### Configure System
-```http
-POST /api/setup/configure
-Content-Type: application/json
-
-{
-  "network": {
-    "hostname": "string",
-    "port": 8081,
-    "ssl": false,
-    "external_domain": "string",
-    "mdns": false
-  },
-  "auth": {
-    "mode": "open_registration|invite_only|closed",
-    "registration_password": "string"
-  },
-  "admin": {
-    "username": "string",
-    "password": "string",
-    "confirm_password": "string"
-  },
-  "user": {
-    "username": "string",
-    "email": "string",
-    "password": "string"
+  "success": true,
+  "data": {
+    "is_configured": true,
+    "admin_exists": true
   }
 }
 ```
 
-**Response** (200 OK):
+## 🔌 WebSocket API
+
+### Connection
+
+Connect to WebSocket endpoint with JWT token:
+
+```
+ws://localhost:8081/ws?token=<jwt_token>
+```
+
+### Message Types
+
+#### Text Message
 ```json
 {
-  "success": true,
-  "message": "System configured successfully"
+  "type": "text",
+  "channel_id": 1,
+  "content": "Hello, world!",
+  "user_id": 3,
+  "username": "testuser",
+  "timestamp": "2025-07-28T19:00:00Z"
 }
 ```
 
-## Error Responses
+#### Join Channel
+```json
+{
+  "type": "join",
+  "channel_id": 1,
+  "user_id": 3,
+  "username": "testuser",
+  "timestamp": "2025-07-28T19:00:00Z"
+}
+```
+
+#### Leave Channel
+```json
+{
+  "type": "leave",
+  "channel_id": 1,
+  "user_id": 3,
+  "username": "testuser",
+  "timestamp": "2025-07-28T19:00:00Z"
+}
+```
+
+#### Typing Indicator
+```json
+{
+  "type": "typing",
+  "channel_id": 1,
+  "user_id": 3,
+  "username": "testuser",
+  "timestamp": "2025-07-28T19:00:00Z"
+}
+```
+
+#### Stop Typing
+```json
+{
+  "type": "stop_typing",
+  "channel_id": 1,
+  "user_id": 3,
+  "username": "testuser",
+  "timestamp": "2025-07-28T19:00:00Z"
+}
+```
+
+## 🚨 Error Responses
 
 ### Standard Error Format
 ```json
@@ -450,108 +462,134 @@ Content-Type: application/json
 }
 ```
 
-### Common Status Codes
-- `200 OK`: Request successful
-- `201 Created`: Resource created successfully
-- `400 Bad Request`: Invalid request data
-- `401 Unauthorized`: Authentication required or invalid token
-- `403 Forbidden`: Insufficient permissions
-- `404 Not Found`: Resource not found
-- `500 Internal Server Error`: Server error
+### Common HTTP Status Codes
 
-### Authentication Errors
+- **200** - Success
+- **201** - Created
+- **400** - Bad Request
+- **401** - Unauthorized
+- **403** - Forbidden
+- **404** - Not Found
+- **500** - Internal Server Error
+
+### Error Examples
+
+#### Authentication Error
 ```json
 {
   "error": "Invalid username or password"
 }
 ```
 
+#### Permission Error
 ```json
 {
   "error": "Guest mode is not enabled"
 }
 ```
 
+#### Validation Error
 ```json
 {
-  "error": "Auto login is not enabled"
+  "error": "Username is required"
 }
 ```
 
-### Permission Errors
-```json
-{
-  "error": "Only admins can access this endpoint"
-}
+## 🔒 Security
+
+### Password Requirements
+- Minimum 9 characters
+- Must contain at least one number
+- Must contain at least one special character
+
+### JWT Token
+- 24-hour expiration
+- Contains user ID, username, and role
+- Required for all authenticated endpoints
+
+### CORS
+- Configured for development and production
+- Supports cross-origin requests
+- Secure origin validation
+
+## 📝 Usage Examples
+
+### JavaScript/TypeScript
+
+```javascript
+// Login
+const loginResponse = await fetch('http://localhost:8081/api/auth/login', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    username: 'testuser',
+    password: 'password123!'
+  })
+});
+
+const { token } = await loginResponse.json();
+
+// Get servers
+const serversResponse = await fetch('http://localhost:8081/api/servers', {
+  headers: { 'Authorization': `Bearer ${token}` }
+});
+
+const { servers } = await serversResponse.json();
+
+// Send message
+const messageResponse = await fetch('http://localhost:8081/api/channels/1/messages', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`
+  },
+  body: JSON.stringify({ content: 'Hello, world!' })
+});
 ```
 
-## Rate Limiting
+### cURL
 
-Currently, no rate limiting is implemented. Consider implementing rate limiting for production deployments.
-
-## CORS
-
-CORS is enabled for development with the following configuration:
-- **Allowed Origins**: `http://localhost:5173`, `http://127.0.0.1:5173`
-- **Allowed Methods**: GET, POST, PUT, DELETE, OPTIONS
-- **Allowed Headers**: Origin, Content-Type, Accept, Authorization
-- **Credentials**: true
-
-## Security Considerations
-
-1. **JWT Tokens**: Store tokens securely and never expose them in client-side code
-2. **Password Requirements**: Enforce strong passwords (minimum 9 characters, numbers, special characters)
-3. **Admin Access**: Limit admin panel access to trusted users only
-4. **Guest Mode**: Use guest mode carefully in production environments
-5. **HTTPS**: Always use HTTPS in production
-
-## Examples
-
-### Complete Authentication Flow
 ```bash
-# 1. Register a new user
-curl -X POST http://localhost:8081/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"username": "newuser", "email": "user@example.com", "password": "password123!"}'
-
-# 2. Login with the user
+# Login
 curl -X POST http://localhost:8081/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username": "newuser", "password": "password123!"}'
+  -d '{"username": "testuser", "password": "password123!"}'
 
-# 3. Use the token for authenticated requests
-TOKEN="your-jwt-token-here"
-curl -H "Authorization: Bearer $TOKEN" \
+# Get servers (with token)
+curl -H "Authorization: Bearer <token>" \
   http://localhost:8081/api/servers
-```
 
-### Guest Access Flow
-```bash
-# 1. Enable guest mode (admin only)
-curl -X POST http://localhost:8081/api/settings \
-  -H "Authorization: Bearer $ADMIN_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"guest_mode_enabled": true, "auto_login_enabled": true, "default_username": "guest", "default_password": "guest123!"}'
-
-# 2. Guest login
-curl -X POST http://localhost:8081/api/auth/guest \
-  -H "Content-Type: application/json" \
-  -d '{}'
-```
-
-### Messaging Flow
-```bash
-# 1. Get channels
-curl -H "Authorization: Bearer $TOKEN" \
-  http://localhost:8081/api/servers/1/channels
-
-# 2. Send a message
+# Send message
 curl -X POST http://localhost:8081/api/channels/1/messages \
-  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
   -d '{"content": "Hello, world!"}'
+```
 
-# 3. Get messages
-curl -H "Authorization: Bearer $TOKEN" \
-  http://localhost:8081/api/channels/1/messages
-``` 
+## 🔧 Development
+
+### Testing Endpoints
+
+Use the debug page for testing:
+```
+http://localhost:5174/debug
+```
+
+### Health Check
+
+Monitor server status:
+```
+http://localhost:8081/health
+```
+
+### WebSocket Testing
+
+Use browser console or WebSocket testing tools:
+```javascript
+const ws = new WebSocket('ws://localhost:8081/ws?token=<jwt_token>');
+ws.onmessage = (event) => console.log(JSON.parse(event.data));
+```
+
+---
+
+For more information, see the [main documentation](../README.md) and [user guide](USER_GUIDE.md). 
