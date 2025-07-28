@@ -6,7 +6,6 @@ run:
 
 linters:
   enable:
-    - goimports
     - govet
     - errcheck
     - staticcheck
@@ -18,4 +17,5 @@ linters:
 
 formatters:
   enable:
-    - gofmt 
+    - gofmt
+    - goimports 
