@@ -333,6 +333,182 @@ class ApiClient {
 	isAuthenticated(): boolean {
 		return !!this.token;
 	}
+
+	// Admin API Methods
+	async getUsers(): Promise<User[]> {
+		const response = await this.request<{ data: any[] }>('/api/admin/users') as any;
+		
+		if (response && response.data) {
+			return response.data.map((user: any) => ({
+				id: user.id,
+				username: user.username,
+				email: user.email,
+				role: user.role,
+				isOnline: user.is_online,
+				messageCount: user.message_count,
+				serverCount: user.server_count,
+				createdAt: new Date(user.created_at),
+				updatedAt: new Date(user.updated_at)
+			}));
+		}
+		throw new ApiError(500, 'Failed to fetch users');
+	}
+
+	async createUser(userData: { username: string; email?: string; password: string; role?: string }): Promise<User> {
+		const response = await this.request<{ data: any }>('/api/admin/users', {
+			method: 'POST',
+			body: JSON.stringify(userData)
+		}) as any;
+
+		if (response && response.data) {
+			return {
+				id: response.data.id,
+				username: response.data.username,
+				email: response.data.email,
+				role: response.data.role,
+				isOnline: false,
+				createdAt: new Date(),
+				updatedAt: new Date()
+			};
+		}
+		throw new ApiError(400, 'Failed to create user');
+	}
+
+	async updateUser(userId: number, userData: { username?: string; email?: string; password?: string }): Promise<void> {
+		const response = await this.request<{ success: boolean }>('/api/admin/users/' + userId, {
+			method: 'PUT',
+			body: JSON.stringify(userData)
+		}) as any;
+
+		if (!response || !response.success) {
+			throw new ApiError(400, 'Failed to update user');
+		}
+	}
+
+	async deleteUser(userId: number): Promise<void> {
+		const response = await this.request<{ success: boolean }>('/api/admin/users/' + userId, {
+			method: 'DELETE'
+		}) as any;
+
+		if (!response || !response.success) {
+			throw new ApiError(400, 'Failed to delete user');
+		}
+	}
+
+	async updateUserRole(userId: number, role: string): Promise<void> {
+		const response = await this.request<{ success: boolean }>('/api/admin/users/' + userId + '/role', {
+			method: 'POST',
+			body: JSON.stringify({ role })
+		}) as any;
+
+		if (!response || !response.success) {
+			throw new ApiError(400, 'Failed to update user role');
+		}
+	}
+
+	// Moderation Methods
+	async kickUser(userId: number, reason?: string): Promise<void> {
+		const response = await this.request<{ success: boolean }>('/api/admin/users/' + userId + '/kick', {
+			method: 'POST',
+			body: JSON.stringify({ reason: reason || '' })
+		}) as any;
+
+		if (!response || !response.success) {
+			throw new ApiError(400, 'Failed to kick user');
+		}
+	}
+
+	async banUser(userId: number, reason?: string, duration?: number): Promise<void> {
+		const response = await this.request<{ success: boolean }>('/api/admin/users/' + userId + '/ban', {
+			method: 'POST',
+			body: JSON.stringify({ reason: reason || '', duration: duration || 0 })
+		}) as any;
+
+		if (!response || !response.success) {
+			throw new ApiError(400, 'Failed to ban user');
+		}
+	}
+
+	async unbanUser(userId: number): Promise<void> {
+		const response = await this.request<{ success: boolean }>('/api/admin/users/' + userId + '/unban', {
+			method: 'POST'
+		}) as any;
+
+		if (!response || !response.success) {
+			throw new ApiError(400, 'Failed to unban user');
+		}
+	}
+
+	async muteUser(userId: number, reason?: string, duration?: number): Promise<void> {
+		const response = await this.request<{ success: boolean }>('/api/admin/users/' + userId + '/mute', {
+			method: 'POST',
+			body: JSON.stringify({ reason: reason || '', duration: duration || 0 })
+		}) as any;
+
+		if (!response || !response.success) {
+			throw new ApiError(400, 'Failed to mute user');
+		}
+	}
+
+	async unmuteUser(userId: number): Promise<void> {
+		const response = await this.request<{ success: boolean }>('/api/admin/users/' + userId + '/unmute', {
+			method: 'POST'
+		}) as any;
+
+		if (!response || !response.success) {
+			throw new ApiError(400, 'Failed to unmute user');
+		}
+	}
+
+	// System Health Methods
+	async getAdminHealth(): Promise<any> {
+		const response = await this.request<{ data: any }>('/api/admin/health') as any;
+		
+		if (response && response.data) {
+			return response.data;
+		}
+		throw new ApiError(500, 'Failed to fetch system health');
+	}
+
+	async getMetrics(): Promise<any> {
+		const response = await this.request<{ data: any }>('/api/admin/metrics') as any;
+		
+		if (response && response.data) {
+			return response.data;
+		}
+		throw new ApiError(500, 'Failed to fetch metrics');
+	}
+
+	async getOnlineUsers(): Promise<any[]> {
+		const response = await this.request<{ data: any[] }>('/api/admin/users/online') as any;
+		
+		if (response && response.data) {
+			return response.data;
+		}
+		throw new ApiError(500, 'Failed to fetch online users');
+	}
+
+	async getUserLatency(): Promise<any[]> {
+		const response = await this.request<{ data: any[] }>('/api/admin/users/latency') as any;
+		
+		if (response && response.data) {
+			return response.data;
+		}
+		throw new ApiError(500, 'Failed to fetch user latency');
+	}
+
+	async getAuditLogs(limit?: number, offset?: number): Promise<any[]> {
+		const params = new URLSearchParams();
+		if (limit) params.append('limit', limit.toString());
+		if (offset) params.append('offset', offset.toString());
+
+		const response = await this.request<{ data: any[] }>('/api/admin/logs?' + params) as any;
+		
+		if (response && response.data) {
+			return response.data;
+		}
+		throw new ApiError(500, 'Failed to fetch audit logs');
+	}
 }
 
 // Export singleton instance

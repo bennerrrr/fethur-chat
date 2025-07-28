@@ -1206,10 +1206,11 @@ func (s *Server) handleDeleteUser(c *gin.Context) {
 	}
 
 	// Disconnect user if online
+	userIDInt, _ := strconv.Atoi(userID)
 	s.clientsMux.Lock()
-	if client, exists := s.clients[userID]; exists {
+	if client, exists := s.clients[userIDInt]; exists {
 		client.Close()
-		delete(s.clients, userID)
+		delete(s.clients, userIDInt)
 	}
 	s.clientsMux.Unlock()
 
@@ -1314,10 +1315,11 @@ func (s *Server) handleBanUser(c *gin.Context) {
 	}
 
 	// Disconnect user if online
+	userIDInt, _ := strconv.Atoi(userID)
 	s.clientsMux.Lock()
-	if client, exists := s.clients[userID]; exists {
+	if client, exists := s.clients[userIDInt]; exists {
 		client.Close()
-		delete(s.clients, userID)
+		delete(s.clients, userIDInt)
 	}
 	s.clientsMux.Unlock()
 

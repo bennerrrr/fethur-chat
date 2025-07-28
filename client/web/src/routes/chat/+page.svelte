@@ -156,6 +156,12 @@
 </svelte:head>
 
 <div class="chat-page">
+	{#if currentUser && (currentUser.role === 'admin' || currentUser.role === 'super_admin')}
+		<div class="admin-nav">
+			<a href="/admin" class="admin-link">🔧 Admin Dashboard</a>
+		</div>
+	{/if}
+	
 	{#if loading}
 		<div class="loading-screen">
 			<LoadingSpinner size="lg" />
@@ -397,6 +403,34 @@
 
 	.logout-btn:hover {
 		background-color: #dc2626;
+	}
+
+	/* Admin Navigation */
+	.admin-nav {
+		position: fixed;
+		top: 1rem;
+		right: 1rem;
+		z-index: 1000;
+	}
+
+	.admin-link {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5rem;
+		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+		color: white;
+		text-decoration: none;
+		padding: 0.5rem 1rem;
+		border-radius: 0.5rem;
+		font-weight: 500;
+		font-size: 0.875rem;
+		transition: all 0.2s;
+		box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+	}
+
+	.admin-link:hover {
+		transform: translateY(-1px);
+		box-shadow: 0 6px 12px -1px rgba(0, 0, 0, 0.15);
 	}
 
 	/* Responsive design */

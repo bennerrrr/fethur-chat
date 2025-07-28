@@ -4,9 +4,13 @@ export interface User {
 	username: string;
 	email: string;
 	avatar?: string;
+	role?: string;
 	isOnline: boolean;
 	lastSeen?: Date;
 	createdAt: Date;
+	updatedAt?: Date;
+	messageCount?: number;
+	serverCount?: number;
 }
 
 export interface Server {

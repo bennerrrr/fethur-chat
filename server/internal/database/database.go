@@ -160,7 +160,46 @@ func createTables(db *sql.DB) error {
 		UNIQUE(user_id, server_id)
 	);`
 
-	tables := []string{usersTable, settingsTable, serversTable, channelsTable, messagesTable, serverMembersTable}
+	// User bans table for moderation
+	userBansTable := `
+	CREATE TABLE IF NOT EXISTS user_bans (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		user_id INTEGER NOT NULL,
+		reason TEXT,
+		banned_by INTEGER NOT NULL,
+		expires_at DATETIME,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+		FOREIGN KEY (banned_by) REFERENCES users (id) ON DELETE CASCADE,
+		UNIQUE(user_id)
+	);`
+
+	// User mutes table for moderation
+	userMutesTable := `
+	CREATE TABLE IF NOT EXISTS user_mutes (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		user_id INTEGER NOT NULL,
+		reason TEXT,
+		muted_by INTEGER NOT NULL,
+		expires_at DATETIME,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+		FOREIGN KEY (muted_by) REFERENCES users (id) ON DELETE CASCADE,
+		UNIQUE(user_id)
+	);`
+
+	// Audit logs table for admin actions
+	auditLogsTable := `
+	CREATE TABLE IF NOT EXISTS audit_logs (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		admin_id INTEGER NOT NULL,
+		action TEXT NOT NULL,
+		details TEXT,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (admin_id) REFERENCES users (id) ON DELETE CASCADE
+	);`
+
+	tables := []string{usersTable, settingsTable, serversTable, channelsTable, messagesTable, serverMembersTable, userBansTable, userMutesTable, auditLogsTable}
 
 	for _, table := range tables {
 		if _, err := db.Exec(table); err != nil {
