@@ -65,7 +65,7 @@ jobs:
       - name: Install Gosec
         run: |
           echo "Installing Gosec..."
-          go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest || echo "Failed to install Gosec"
+          go install github.com/securego/gosec/v2/cmd/gosec@latest || echo "Failed to install Gosec"
 
       - name: Run Gosec Security Scanner
         run: |
