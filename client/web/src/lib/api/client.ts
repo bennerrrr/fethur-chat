@@ -201,29 +201,63 @@ class ApiClient {
 	}
 
 	// Message methods
-	async getMessages(channelId: number, page = 1, limit = 50): Promise<PaginatedResponse<Message>> {
-		const params = new URLSearchParams({
-			page: page.toString(),
-			limit: limit.toString()
-		});
+	async getMessages(channelId: number, options: { limit?: number; before?: number } = {}): Promise<{ data: Message[]; hasMore: boolean }> {
+		const params = new URLSearchParams();
+		if (options.limit) params.append('limit', options.limit.toString());
+		if (options.before) params.append('before', options.before.toString());
 
-		const response = await this.request<PaginatedResponse<Message>>(`/api/channels/${channelId}/messages?${params}`);
+		const response = await this.request<{ messages: any[] }>(`/api/channels/${channelId}/messages?${params}`);
 		
 		if (response.success && response.data) {
-			return response.data;
+			// Transform backend response to frontend format
+			const messages = response.data.messages.map((msg: any) => ({
+				id: msg.id,
+				content: msg.content,
+				authorId: 0, // Backend doesn't provide this yet
+				author: {
+					id: 0,
+					username: msg.username,
+					email: '',
+					isOnline: true,
+					createdAt: new Date()
+				},
+				channelId: channelId,
+				createdAt: new Date(msg.created_at),
+				isEdited: false
+			}));
+
+			return {
+				data: messages,
+				hasMore: messages.length === (options.limit || 50)
+			};
 		}
 
 		throw new ApiError(500, 'Failed to fetch messages');
 	}
 
-	async sendMessage(channelId: number, content: string): Promise<Message> {
-		const response = await this.request<Message>(`/api/channels/${channelId}/messages`, {
+	async sendMessage(channelId: number, messageData: { content: string; replyToId?: number }): Promise<Message> {
+		const response = await this.request<{ data: any }>(`/api/channels/${channelId}/messages`, {
 			method: 'POST',
-			body: JSON.stringify({ content })
+			body: JSON.stringify({ content: messageData.content })
 		});
 
 		if (response.success && response.data) {
-			return response.data;
+			const msg = response.data.data; // Backend returns { data: { ... } }
+			return {
+				id: msg.id,
+				content: msg.content,
+				authorId: msg.user_id,
+				author: {
+					id: msg.user_id,
+					username: msg.username,
+					email: '',
+					isOnline: true,
+					createdAt: new Date()
+				},
+				channelId: channelId,
+				createdAt: new Date(msg.created_at),
+				isEdited: false
+			};
 		}
 
 		throw new ApiError(400, 'Failed to send message');

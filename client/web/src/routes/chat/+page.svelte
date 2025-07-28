@@ -1,20 +1,34 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { browser } from '$app/environment';
 	import { LoadingSpinner } from '$lib/components/ui';
 	import { apiClient } from '$lib/api/client';
+	import { wsClient } from '$lib/api/websocket';
+	import { appActions, appStore, chatActions, chatStore } from '$lib/stores/app';
+	import ServerList from '$lib/components/ui/ServerList.svelte';
+	import ChannelList from '$lib/components/ui/ChannelList.svelte';
+	import EnhancedChatArea from '$lib/components/ui/EnhancedChatArea.svelte';
+	import UserList from '$lib/components/ui/UserList.svelte';
+	import type { User, Server, Channel } from '$lib/types';
 
 	let loading = true;
 	let error = '';
-	let currentUser: any = null;
+	let currentUser: User | null = null;
 	let backendAvailable = false;
+
+	// Subscribe to stores
+	$: currentServer = $appStore.currentServer;
+	$: currentChannel = $appStore.currentChannel;
+	$: servers = $appStore.servers;
+	$: isConnected = $appStore.isConnected;
 
 	onMount(async () => {
 		try {
 			// Check authentication
+			let token: string | null = null;
 			if (browser) {
-				const token = localStorage.getItem('token');
+				token = localStorage.getItem('token');
 				if (!token) {
 					goto('/');
 					return;
@@ -29,7 +43,18 @@
 				backendAvailable = true;
 				
 				// Get current user info
-				currentUser = await apiClient.getCurrentUser();
+				const user = await apiClient.getCurrentUser();
+				currentUser = user;
+				appActions.setCurrentUser(user);
+
+				// Load servers
+				await loadServers();
+
+				// Connect to WebSocket
+				if (token) {
+					await connectWebSocket(token);
+				}
+
 			} catch (err) {
 				console.warn('Backend not available or authentication failed:', err);
 				backendAvailable = false;
@@ -38,7 +63,9 @@
 				currentUser = {
 					id: 1,
 					username: 'TestUser',
-					email: 'test@example.com'
+					email: 'test@example.com',
+					isOnline: true,
+					createdAt: new Date()
 				};
 			}
 
@@ -50,8 +77,74 @@
 		}
 	});
 
+	onDestroy(() => {
+		// Disconnect WebSocket when component is destroyed
+		wsClient.disconnect();
+	});
+
+	async function loadServers() {
+		try {
+			const serversList = await apiClient.getServers();
+			appActions.setServers(serversList);
+			
+			// Auto-select first server if available
+			if (serversList.length > 0 && !currentServer) {
+				await selectServer(serversList[0]);
+			}
+		} catch (err) {
+			console.error('Failed to load servers:', err);
+		}
+	}
+
+	async function selectServer(server: Server) {
+		try {
+			appActions.setCurrentServer(server);
+			
+			// Load channels for the server
+			const channels = await apiClient.getChannels(server.id);
+			const serverWithChannels = { ...server, channels };
+			appActions.updateServer(server.id, { channels });
+			
+			// Auto-select first channel if available
+			if (channels.length > 0 && !currentChannel) {
+				await selectChannel(channels[0]);
+			}
+		} catch (err) {
+			console.error('Failed to load channels:', err);
+		}
+	}
+
+	async function selectChannel(channel: Channel) {
+		try {
+			appActions.setCurrentChannel(channel);
+			
+			// Load messages for the channel
+			await chatActions.loadMessages(channel.id);
+			
+			// Join channel via WebSocket
+			if (wsClient.isConnected()) {
+				wsClient.joinChannel(channel.id);
+			}
+		} catch (err) {
+			console.error('Failed to load messages:', err);
+		}
+	}
+
+	async function connectWebSocket(token: string) {
+		try {
+			await wsClient.connect(token);
+			appActions.setConnectionStatus(true);
+		} catch (err) {
+			console.error('Failed to connect WebSocket:', err);
+			appActions.setConnectionStatus(false);
+		}
+	}
+
 	function logout() {
 		if (browser) {
+			wsClient.disconnect();
+			appActions.reset();
+			chatActions.clearChat();
 			localStorage.removeItem('token');
 			goto('/');
 		}
@@ -74,55 +167,84 @@
 			<p>{error}</p>
 			<button on:click={() => window.location.reload()}>Retry</button>
 		</div>
+	{:else if !backendAvailable}
+		<div class="offline-screen">
+			<h2>⚠️ Backend Server Offline</h2>
+			<p>The backend server is not currently available. This is a demonstration of the frontend interface.</p>
+			<p><strong>To enable full functionality:</strong></p>
+			<ul>
+				<li>Start the backend server (make sure it's running on port 8081)</li>
+				<li>Refresh this page</li>
+			</ul>
+			<button on:click={() => window.location.reload()}>Retry Connection</button>
+		</div>
 	{:else}
 		<div class="chat-container">
-			<header class="chat-header">
-				<h1>💬 Fethur Chat</h1>
-				<div class="connection-status">
-					{#if backendAvailable}
-						<span class="status-online">🟢 Online</span>
-					{:else}
-						<span class="status-offline">🔴 Offline Mode</span>
-					{/if}
-				</div>
-				<div class="user-info">
-					Welcome, {currentUser?.username || 'User'}!
-				</div>
-				<button class="logout-btn" on:click={logout}>Logout</button>
-			</header>
+			<!-- Server List Sidebar -->
+			<aside class="server-sidebar">
+				<ServerList 
+					{servers}
+					currentServerId={currentServer?.id || null}
+					{currentUser}
+					on:selectServer={(e) => selectServer(e.detail)}
+				/>
+			</aside>
 
-			<main class="chat-main">
-				<div class="message-area">
-					<div class="welcome-message">
-						<h2>🎉 Welcome to Fethur!</h2>
-						<p>Your lightweight Discord alternative is ready!</p>
-						
-						{#if !backendAvailable}
-							<div class="offline-notice">
-								<h3>⚠️ Backend Server Offline</h3>
-								<p>The backend server is not currently available. This is a demonstration of the frontend interface.</p>
-								<p><strong>To enable full functionality:</strong></p>
-								<ul>
-									<li>Start the backend server (make sure it's running on port 8081)</li>
-									<li>Refresh this page</li>
-								</ul>
-							</div>
-						{:else}
-							<p><em>All systems operational! Enhanced features are being loaded...</em></p>
-						{/if}
-					</div>
-				</div>
-
-				<div class="message-input">
-					<input 
-						type="text" 
-						placeholder={backendAvailable ? "Type a message..." : "Backend offline - messaging disabled"}
-						class="input-field"
-						disabled={!backendAvailable}
+			<!-- Channel List Sidebar -->
+			<aside class="channel-sidebar">
+				{#if currentServer}
+					<ChannelList 
+						server={currentServer}
+						currentChannelId={currentChannel?.id || null}
+						{currentUser}
+						on:selectChannel={(e) => selectChannel(e.detail)}
 					/>
-					<button class="send-btn" disabled={!backendAvailable}>Send</button>
-				</div>
+				{:else}
+					<div class="no-server-selected">
+						<p>Select a server to view channels</p>
+					</div>
+				{/if}
+			</aside>
+
+			<!-- Main Chat Area -->
+			<main class="chat-main">
+				{#if currentChannel}
+					<EnhancedChatArea 
+						channel={currentChannel}
+						{currentUser}
+					/>
+				{:else}
+					<div class="no-channel-selected">
+						<h2>Welcome to Fethur Chat!</h2>
+						<p>Select a channel to start chatting</p>
+					</div>
+				{/if}
 			</main>
+
+			<!-- User List Sidebar -->
+			<aside class="user-sidebar">
+				{#if currentServer}
+					<UserList 
+						server={currentServer}
+						{currentUser}
+					/>
+				{/if}
+			</aside>
+		</div>
+
+		<!-- Connection Status Bar -->
+		<div class="connection-status-bar">
+			<div class="status-indicator">
+				{#if isConnected}
+					<span class="status-online">🟢 Connected</span>
+				{:else}
+					<span class="status-offline">🔴 Disconnected</span>
+				{/if}
+			</div>
+			<div class="user-info">
+				Welcome, {currentUser?.username || 'User'}!
+			</div>
+			<button class="logout-btn" on:click={logout}>Logout</button>
 		</div>
 	{/if}
 </div>
@@ -133,9 +255,11 @@
 		background-color: #1a1a1a;
 		color: #ffffff;
 		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+		display: flex;
+		flex-direction: column;
 	}
 
-	.loading-screen, .error-screen {
+	.loading-screen, .error-screen, .offline-screen {
 		display: flex;
 		flex-direction: column;
 		align-items: center;
@@ -145,7 +269,7 @@
 		text-align: center;
 	}
 
-	.error-screen button {
+	.error-screen button, .offline-screen button {
 		background-color: #3b82f6;
 		color: white;
 		border: none;
@@ -156,38 +280,93 @@
 		transition: background-color 0.2s;
 	}
 
-	.error-screen button:hover {
+	.error-screen button:hover, .offline-screen button:hover {
 		background-color: #2563eb;
 	}
 
-	.chat-container {
-		display: flex;
-		flex-direction: column;
-		height: 100vh;
+	.offline-screen {
+		max-width: 600px;
+		margin: 0 auto;
+		padding: 2rem;
 	}
 
-	.chat-header {
+	.offline-screen h2 {
+		color: #f59e0b;
+		margin-bottom: 1rem;
+	}
+
+	.offline-screen ul {
+		text-align: left;
+		margin: 1rem 0;
+		padding-left: 1.5rem;
+	}
+
+	.offline-screen li {
+		margin: 0.5rem 0;
+	}
+
+	.chat-container {
+		flex: 1;
+		display: flex;
+		overflow: hidden;
+	}
+
+	.server-sidebar {
+		width: 72px;
+		background-color: #2d2d2d;
+		border-right: 1px solid #404040;
+		flex-shrink: 0;
+	}
+
+	.channel-sidebar {
+		width: 240px;
+		background-color: #2d2d2d;
+		border-right: 1px solid #404040;
+		flex-shrink: 0;
+	}
+
+	.chat-main {
+		flex: 1;
+		background-color: #1a1a1a;
+		display: flex;
+		flex-direction: column;
+	}
+
+	.user-sidebar {
+		width: 240px;
+		background-color: #2d2d2d;
+		border-left: 1px solid #404040;
+		flex-shrink: 0;
+	}
+
+	.no-server-selected, .no-channel-selected {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		height: 100%;
+		text-align: center;
+		color: #6b7280;
+	}
+
+	.no-channel-selected h2 {
+		color: #3b82f6;
+		margin-bottom: 1rem;
+	}
+
+	.connection-status-bar {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		padding: 1rem 1.5rem;
+		padding: 0.5rem 1rem;
 		background-color: #2d2d2d;
-		border-bottom: 1px solid #404040;
+		border-top: 1px solid #404040;
 		flex-shrink: 0;
-		gap: 1rem;
+		font-size: 0.875rem;
 	}
 
-	.chat-header h1 {
-		margin: 0;
-		font-size: 1.5rem;
-		font-weight: 600;
-		color: #3b82f6;
-	}
-
-	.connection-status {
+	.status-indicator {
 		display: flex;
 		align-items: center;
-		font-size: 0.875rem;
 	}
 
 	.status-online {
@@ -200,7 +379,6 @@
 
 	.user-info {
 		color: #6b7280;
-		font-size: 0.875rem;
 		flex: 1;
 		text-align: center;
 	}
@@ -209,10 +387,11 @@
 		background-color: #ef4444;
 		color: white;
 		border: none;
-		padding: 0.5rem 1rem;
+		padding: 0.25rem 0.75rem;
 		border-radius: 0.375rem;
 		cursor: pointer;
 		font-weight: 500;
+		font-size: 0.875rem;
 		transition: background-color 0.2s;
 	}
 
@@ -220,159 +399,22 @@
 		background-color: #dc2626;
 	}
 
-	.chat-main {
-		flex: 1;
-		display: flex;
-		flex-direction: column;
-		overflow: hidden;
-	}
-
-	.message-area {
-		flex: 1;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		background-color: #1a1a1a;
-		padding: 2rem;
-	}
-
-	.welcome-message {
-		text-align: center;
-		max-width: 700px;
-	}
-
-	.welcome-message h2 {
-		color: #3b82f6;
-		margin: 0 0 1rem 0;
-		font-size: 2rem;
-	}
-
-	.welcome-message p {
-		color: #6b7280;
-		margin: 0.75rem 0;
-		line-height: 1.6;
-		font-size: 1.125rem;
-	}
-
-	.offline-notice {
-		background-color: #2d2d2d;
-		border: 1px solid #404040;
-		border-radius: 0.75rem;
-		padding: 1.5rem;
-		margin-top: 2rem;
-		text-align: left;
-	}
-
-	.offline-notice h3 {
-		color: #f59e0b;
-		margin: 0 0 1rem 0;
-		font-size: 1.25rem;
-	}
-
-	.offline-notice p {
-		margin: 0.5rem 0;
-		font-size: 1rem;
-	}
-
-	.offline-notice ul {
-		margin: 1rem 0;
-		padding-left: 1.5rem;
-		color: #9ca3af;
-	}
-
-	.offline-notice li {
-		margin: 0.5rem 0;
-	}
-
-	.message-input {
-		display: flex;
-		gap: 1rem;
-		padding: 1rem 1.5rem;
-		background-color: #2d2d2d;
-		border-top: 1px solid #404040;
-		flex-shrink: 0;
-	}
-
-	.input-field {
-		flex: 1;
-		background-color: #1a1a1a;
-		border: 1px solid #404040;
-		border-radius: 0.5rem;
-		padding: 0.75rem 1rem;
-		color: #ffffff;
-		font-size: 1rem;
-		transition: border-color 0.2s;
-	}
-
-	.input-field:focus {
-		outline: none;
-		border-color: #3b82f6;
-	}
-
-	.input-field::placeholder {
-		color: #6b7280;
-	}
-
-	.input-field:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
-		background-color: #0f0f0f;
-	}
-
-	.send-btn {
-		background-color: #3b82f6;
-		color: white;
-		border: none;
-		padding: 0.75rem 1.5rem;
-		border-radius: 0.5rem;
-		cursor: pointer;
-		font-weight: 500;
-		transition: background-color 0.2s;
-	}
-
-	.send-btn:hover:not(:disabled) {
-		background-color: #2563eb;
-	}
-
-	.send-btn:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
-		background-color: #4b5563;
-	}
-
 	/* Responsive design */
+	@media (max-width: 1024px) {
+		.user-sidebar {
+			display: none;
+		}
+	}
+
 	@media (max-width: 768px) {
-		.chat-header {
-			padding: 0.75rem 1rem;
-			flex-wrap: wrap;
+		.channel-sidebar {
+			width: 200px;
 		}
+	}
 
-		.chat-header h1 {
-			font-size: 1.25rem;
-		}
-
-		.user-info {
-			order: 3;
-			flex-basis: 100%;
-			text-align: left;
-			margin-top: 0.5rem;
-		}
-
-		.welcome-message {
-			padding: 1rem;
-		}
-
-		.welcome-message h2 {
-			font-size: 1.5rem;
-		}
-
-		.offline-notice {
-			padding: 1rem;
-		}
-
-		.message-input {
-			padding: 0.75rem 1rem;
-			gap: 0.75rem;
+	@media (max-width: 640px) {
+		.server-sidebar, .channel-sidebar {
+			display: none;
 		}
 	}
 </style> 

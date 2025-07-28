@@ -1,192 +1,134 @@
 import { writable, derived } from 'svelte/store';
 import { browser } from '$app/environment';
-import type { Server, Channel, Message, ChatState, TypingEvent } from '$lib/types';
+import type { User, Server, Channel, Message, ChatState, TypingEvent, AppState } from '$lib/types';
 import { apiClient, ApiError } from '$lib/api/client';
 import { wsClient } from '$lib/api/websocket';
 
-// App state interface
-interface AppState {
-	currentServer: Server | null;
-	currentChannel: Channel | null;
-	servers: Server[];
-	isConnected: boolean;
-	connectionStatus: 'disconnected' | 'connecting' | 'connected' | 'reconnecting';
-	error: string | null;
-	isLoading: boolean;
-}
-
-// Chat state for current channel
-interface ChannelChatState extends ChatState {
-	channelId: number | null;
-}
-
-// Initial states
-const initialAppState: AppState = {
+// Initial app state
+const initialState: AppState = {
+	currentUser: null,
 	currentServer: null,
 	currentChannel: null,
 	servers: [],
 	isConnected: false,
-	connectionStatus: 'disconnected',
-	error: null,
 	isLoading: false
 };
 
-const initialChatState: ChannelChatState = {
-	channelId: null,
+const initialChatState: ChatState = {
 	messages: [],
 	typingUsers: [],
 	isLoadingMessages: false,
-	hasMoreMessages: true
+	hasMoreMessages: true,
+	replyingTo: null,
+	selectedMessage: null
 };
 
-// Create stores
-export const appStore = writable<AppState>(initialAppState);
-export const chatStore = writable<ChannelChatState>(initialChatState);
+// Create app store
+export const appStore = writable<AppState>(initialState);
 
-// Derived stores
+// Create stores
+export const chatStore = writable<ChatState>(initialChatState);
+
+// Derived stores for easier access
+export const currentUser = derived(appStore, ($app) => $app.currentUser);
 export const currentServer = derived(appStore, ($app) => $app.currentServer);
 export const currentChannel = derived(appStore, ($app) => $app.currentChannel);
 export const servers = derived(appStore, ($app) => $app.servers);
 export const isConnected = derived(appStore, ($app) => $app.isConnected);
-export const connectionStatus = derived(appStore, ($app) => $app.connectionStatus);
+export const isLoading = derived(appStore, ($app) => $app.isLoading);
 export const messages = derived(chatStore, ($chat) => $chat.messages);
 export const typingUsers = derived(chatStore, ($chat) => $chat.typingUsers);
 
 // App actions
 export const appActions = {
-	// Load servers
-	async loadServers(): Promise<void> {
-		appStore.update(state => ({ ...state, isLoading: true, error: null }));
-
-		try {
-			const servers = await apiClient.getServers();
-			
-			appStore.update(state => ({
-				...state,
-				servers,
-				isLoading: false
-			}));
-		} catch (error) {
-			const errorMessage = error instanceof ApiError ? error.message : 'Failed to load servers';
-			
-			appStore.update(state => ({
-				...state,
-				error: errorMessage,
-				isLoading: false
-			}));
-
-			throw error;
-		}
+	// Set current user
+	setCurrentUser(user: User | null): void {
+		appStore.update(state => ({
+			...state,
+			currentUser: user
+		}));
 	},
 
 	// Set current server
-	async setCurrentServer(server: Server | null): Promise<void> {
+	setCurrentServer(server: Server | null): void {
 		appStore.update(state => ({
 			...state,
 			currentServer: server,
-			currentChannel: null // Clear current channel when switching servers
+			currentChannel: null // Clear channel when server changes
 		}));
-
-		// Clear chat state when switching servers
-		chatStore.set(initialChatState);
-
-		// Load channels if server is selected
-		if (server) {
-			try {
-				const channels = await apiClient.getChannels(server.id);
-				
-				appStore.update(state => ({
-					...state,
-					currentServer: server ? { ...server, channels } : null
-				}));
-			} catch (error) {
-				console.error('Failed to load channels:', error);
-			}
-		}
 	},
 
 	// Set current channel
-	async setCurrentChannel(channel: Channel | null): Promise<void> {
+	setCurrentChannel(channel: Channel | null): void {
 		appStore.update(state => ({
 			...state,
 			currentChannel: channel
 		}));
-
-		if (channel) {
-			// Load messages for the new channel
-			await chatActions.loadMessages(channel.id);
-			
-			// Join channel via WebSocket
-			if (wsClient.isConnected()) {
-				wsClient.joinChannel(channel.id);
-			}
-		} else {
-			// Clear chat state if no channel selected
-			chatStore.set(initialChatState);
-		}
 	},
 
-	// Create server
-	async createServer(name: string, description?: string): Promise<Server> {
-		try {
-			const server = await apiClient.createServer({ name, description });
-			
-			// Add to servers list
-			appStore.update(state => ({
-				...state,
-				servers: [...state.servers, server]
-			}));
-
-			return server;
-		} catch (error) {
-			const errorMessage = error instanceof ApiError ? error.message : 'Failed to create server';
-			
-			appStore.update(state => ({
-				...state,
-				error: errorMessage
-			}));
-
-			throw error;
-		}
-	},
-
-	// Create channel
-	async createChannel(serverId: number, name: string, type: 'text' | 'voice', description?: string): Promise<Channel> {
-		try {
-			const channel = await apiClient.createChannel(serverId, { name, type, description });
-			
-			// Add to current server's channels if it's the active server
-			appStore.update(state => {
-				if (state.currentServer?.id === serverId) {
-					return {
-						...state,
-						currentServer: {
-							...state.currentServer,
-							channels: [...state.currentServer.channels, channel]
-						}
-					};
-				}
-				return state;
-			});
-
-			return channel;
-		} catch (error) {
-			const errorMessage = error instanceof ApiError ? error.message : 'Failed to create channel';
-			
-			appStore.update(state => ({
-				...state,
-				error: errorMessage
-			}));
-
-			throw error;
-		}
-	},
-
-	// Clear error
-	clearError(): void {
+	// Set servers list
+	setServers(serversList: Server[]): void {
 		appStore.update(state => ({
 			...state,
-			error: null
+			servers: serversList
+		}));
+	},
+
+	// Add server to list
+	addServer(server: Server): void {
+		appStore.update(state => ({
+			...state,
+			servers: [...state.servers, server]
+		}));
+	},
+
+	// Update server in list
+	updateServer(serverId: number, updates: Partial<Server>): void {
+		appStore.update(state => ({
+			...state,
+			servers: state.servers.map(server => 
+				server.id === serverId ? { ...server, ...updates } : server
+			)
+		}));
+	},
+
+	// Remove server from list
+	removeServer(serverId: number): void {
+		appStore.update(state => ({
+			...state,
+			servers: state.servers.filter(server => server.id !== serverId),
+			currentServer: state.currentServer?.id === serverId ? null : state.currentServer,
+			currentChannel: state.currentChannel?.serverId === serverId ? null : state.currentChannel
+		}));
+	},
+
+	// Set connection status
+	setConnectionStatus(connected: boolean): void {
+		appStore.update(state => ({
+			...state,
+			isConnected: connected
+		}));
+	},
+
+	// Set loading state
+	setLoading(loading: boolean): void {
+		appStore.update(state => ({
+			...state,
+			isLoading: loading
+		}));
+	},
+
+	// Reset app state (for logout)
+	reset(): void {
+		appStore.set(initialState);
+	},
+
+	// Initialize app with user data
+	initialize(user: User): void {
+		appStore.update(state => ({
+			...state,
+			currentUser: user,
+			isConnected: true
 		}));
 	}
 };
@@ -194,19 +136,20 @@ export const appActions = {
 // Chat actions
 export const chatActions = {
 	// Load messages for a channel
-	async loadMessages(channelId: number, page = 1): Promise<void> {
+	async loadMessages(channelId: number, limit = 50, before?: number): Promise<void> {
 		chatStore.update(state => ({ 
 			...state, 
-			isLoadingMessages: true, 
-			channelId: page === 1 ? channelId : state.channelId 
+			isLoadingMessages: true
 		}));
 
 		try {
-			const response = await apiClient.getMessages(channelId, page);
+			const response = await apiClient.getMessages(channelId, { limit, before });
 			
 			chatStore.update(state => ({
 				...state,
-				messages: page === 1 ? response.data : [...response.data, ...state.messages],
+				messages: before 
+					? [...response.data.reverse(), ...state.messages]
+					: response.data.reverse(),
 				isLoadingMessages: false,
 				hasMoreMessages: response.hasMore
 			}));
@@ -221,14 +164,14 @@ export const chatActions = {
 	},
 
 	// Send message
-	async sendMessage(channelId: number, content: string): Promise<void> {
+	async sendMessage(channelId: number, content: string, replyToId?: number): Promise<void> {
 		try {
 			// Try WebSocket first for real-time sending
 			if (wsClient.isConnected()) {
 				wsClient.sendMessage(channelId, content);
 			} else {
 				// Fallback to HTTP API
-				const message = await apiClient.sendMessage(channelId, content);
+				const message = await apiClient.sendMessage(channelId, { content, replyToId });
 				this.addMessage(message);
 			}
 		} catch (error) {
@@ -239,16 +182,12 @@ export const chatActions = {
 
 	// Add message to store (from WebSocket events)
 	addMessage(message: Message): void {
-		chatStore.update(state => {
-			// Only add if it's for the current channel
-			if (state.channelId === message.channelId) {
-				return {
-					...state,
-					messages: [...state.messages, message]
-				};
-			}
-			return state;
-		});
+		chatStore.update(state => ({
+			...state,
+			messages: [...state.messages, message].sort((a, b) => 
+				new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+			)
+		}));
 	},
 
 	// Update typing users

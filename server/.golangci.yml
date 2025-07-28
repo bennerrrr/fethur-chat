@@ -14,6 +14,10 @@ linters:
     - misspell
     - gosec
 
+linters-settings:
+  staticcheck:
+    checks: ["all", "-S1000"]
+
 formatters:
   enable:
     - gofmt

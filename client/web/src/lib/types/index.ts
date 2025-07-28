@@ -153,6 +153,7 @@ export interface AppState {
 	currentUser: User | null;
 	currentServer: Server | null;
 	currentChannel: Channel | null;
+	servers: Server[];
 	isConnected: boolean;
 	isLoading: boolean;
 }
