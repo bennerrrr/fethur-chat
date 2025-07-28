@@ -5,11 +5,13 @@ import (
 	"log"
 	"net/http"
 	"sync"
+	"time"
 
 	"fethur/internal/auth"
 	"fethur/internal/database"
 	"fethur/internal/websocket"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -42,6 +44,15 @@ func New(db *database.Database, auth *auth.Service) *Server {
 }
 
 func (s *Server) setupRoutes() {
+	// Add CORS middleware
+	config := cors.DefaultConfig()
+	config.AllowOrigins = []string{"http://localhost:5173", "http://127.0.0.1:5173", "http://192.168.1.23:5173"}
+	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
+	config.AllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization"}
+	config.AllowCredentials = true
+	
+	s.router.Use(cors.New(config))
+
 	// API routes
 	api := s.router.Group("/api")
 	{
@@ -52,12 +63,14 @@ func (s *Server) setupRoutes() {
 			setup.POST("/configure", s.handleSetupConfigure)
 		}
 
-		// Auth routes
-		auth := api.Group("/auth")
-		{
-			auth.POST("/register", s.handleRegister)
-			auth.POST("/login", s.handleLogin)
-		}
+			// Auth routes
+	auth := api.Group("/auth")
+	{
+		auth.POST("/register", s.handleRegister)
+		auth.POST("/login", s.handleLogin)
+		auth.GET("/me", s.authMiddleware(), s.handleGetCurrentUser)
+		auth.POST("/guest", s.handleGuestLogin)
+	}
 
 		// Protected routes
 		protected := api.Group("/")
@@ -68,6 +81,7 @@ func (s *Server) setupRoutes() {
 
 			// Settings routes (admin only)
 			protected.GET("/settings", s.adminMiddleware(), s.handleGetSettings)
+	protected.POST("/settings", s.adminMiddleware(), s.handleUpdateSettings)
 
 			// Server routes
 			protected.POST("/servers", s.handleCreateServer)
@@ -80,6 +94,7 @@ func (s *Server) setupRoutes() {
 
 			// Message routes
 			protected.GET("/channels/:channelId/messages", s.handleGetMessages)
+		protected.POST("/channels/:channelId/messages", s.handleSendMessage)
 		}
 	}
 
@@ -95,9 +110,41 @@ func (s *Server) Router() http.Handler {
 }
 
 func (s *Server) handleHealth(c *gin.Context) {
+	// Add CORS headers for health endpoint
+	c.Header("Access-Control-Allow-Origin", "*")
+	c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+	c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization")
+	
 	c.JSON(http.StatusOK, gin.H{
 		"status":  "healthy",
 		"message": "Fethur Server is running",
+	})
+}
+
+func (s *Server) handleGetCurrentUser(c *gin.Context) {
+	userID := c.GetInt("user_id")
+	username := c.GetString("username")
+
+	// Get user details from database
+	var email, role string
+	err := s.db.QueryRow(
+		"SELECT email, role FROM users WHERE id = ?",
+		userID,
+	).Scan(&email, &role)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"id":       userID,
+			"username": username,
+			"email":    email,
+			"role":     role,
+		},
 	})
 }
 
@@ -310,6 +357,71 @@ func (s *Server) handleLogin(c *gin.Context) {
 	// Check password
 	if !s.auth.CheckPassword(req.Password, passwordHash) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid username or password"})
+		return
+	}
+
+	// Generate token
+	token, err := s.auth.GenerateToken(userID, username, role)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"token": token,
+		"user": gin.H{
+			"id":       userID,
+			"username": username,
+			"email":    email,
+			"role":     role,
+		},
+	})
+}
+
+func (s *Server) handleGuestLogin(c *gin.Context) {
+	// Check if guest mode is enabled
+	guestModeEnabled, err := s.db.GetSetting("guest_mode_enabled")
+	if err != nil || guestModeEnabled != "true" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Guest mode is not enabled"})
+		return
+	}
+
+	// Check if auto login is enabled
+	autoLoginEnabled, err := s.db.GetSetting("auto_login_enabled")
+	if err != nil || autoLoginEnabled != "true" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Auto login is not enabled"})
+		return
+	}
+
+	// Get default credentials
+	defaultUsername, err := s.db.GetSetting("default_username")
+	if err != nil || defaultUsername == "" {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Default username not configured"})
+		return
+	}
+
+	defaultPassword, err := s.db.GetSetting("default_password")
+	if err != nil || defaultPassword == "" {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Default password not configured"})
+		return
+	}
+
+	// Get user from database
+	var userID int
+	var username, email, passwordHash, role string
+	err = s.db.QueryRow(
+		"SELECT id, username, email, password_hash, role FROM users WHERE username = ?",
+		defaultUsername,
+	).Scan(&userID, &username, &email, &passwordHash, &role)
+
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Default user not found"})
+		return
+	}
+
+	// Check password
+	if !s.auth.CheckPassword(defaultPassword, passwordHash) {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid default credentials"})
 		return
 	}
 
@@ -642,6 +754,70 @@ func (s *Server) handleGetMessages(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"messages": messages})
 }
 
+func (s *Server) handleSendMessage(c *gin.Context) {
+	channelID := c.Param("channelId")
+	userID := c.GetInt("user_id")
+	username := c.GetString("username")
+
+	var req struct {
+		Content string `json:"content" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Insert message into database
+	result, err := s.db.Exec(
+		"INSERT INTO messages (channel_id, user_id, content, created_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)",
+		channelID, userID, req.Content,
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send message"})
+		return
+	}
+
+	messageID, _ := result.LastInsertId()
+
+	// Convert channelID to int for WebSocket message
+	channelIDInt := 0
+	fmt.Sscanf(channelID, "%d", &channelIDInt)
+
+	// Broadcast message to all connected clients via WebSocket
+	wsMessage := &websocket.Message{
+		Type:      "message",
+		ChannelID: channelIDInt,
+		Content:   req.Content,
+		UserID:    userID,
+		Username:  username,
+		Timestamp: time.Now(),
+		Data: gin.H{
+			"id":         messageID,
+			"channel_id": channelID,
+			"user_id":    userID,
+			"username":   username,
+			"content":    req.Content,
+			"created_at": time.Now().Format(time.RFC3339),
+		},
+	}
+
+	s.hub.BroadcastMessage(wsMessage)
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Message sent successfully",
+		"data": gin.H{
+			"id":         messageID,
+			"channel_id": channelID,
+			"user_id":    userID,
+			"username":   username,
+			"content":    req.Content,
+			"created_at": time.Now().Format(time.RFC3339),
+		},
+	})
+}
+
 func (s *Server) handleWebSocket(c *gin.Context) {
 	userID := c.GetInt("user_id")
 	username := c.GetString("username")
@@ -731,4 +907,48 @@ func (s *Server) handleGetSettings(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, settings)
+}
+
+func (s *Server) handleUpdateSettings(c *gin.Context) {
+	var req struct {
+		GuestModeEnabled bool   `json:"guest_mode_enabled"`
+		AutoLoginEnabled bool   `json:"auto_login_enabled"`
+		DefaultUsername  string `json:"default_username"`
+		DefaultPassword  string `json:"default_password"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Update settings
+	if err := s.db.SetSetting("guest_mode_enabled", fmt.Sprintf("%t", req.GuestModeEnabled), "Enable guest mode for unauthenticated users"); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update guest mode setting"})
+		return
+	}
+
+	if err := s.db.SetSetting("auto_login_enabled", fmt.Sprintf("%t", req.AutoLoginEnabled), "Enable automatic login with default credentials"); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update auto login setting"})
+		return
+	}
+
+	if req.DefaultUsername != "" {
+		if err := s.db.SetSetting("default_username", req.DefaultUsername, "Default username for auto login"); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update default username"})
+			return
+		}
+	}
+
+	if req.DefaultPassword != "" {
+		if err := s.db.SetSetting("default_password", req.DefaultPassword, "Default password for auto login"); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update default password"})
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Settings updated successfully",
+	})
 }

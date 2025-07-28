@@ -2,7 +2,7 @@ import { browser } from '$app/environment';
 import { PUBLIC_WS_URL } from '$env/static/public';
 import type { WebSocketEvent, TypingEvent, MessageEvent, UserEvent } from '$lib/types';
 
-const WS_BASE_URL = PUBLIC_WS_URL || 'ws://localhost:8080';
+const WS_BASE_URL = PUBLIC_WS_URL || 'ws://localhost:8081';
 
 type EventHandler<T = any> = (data: T) => void;
 

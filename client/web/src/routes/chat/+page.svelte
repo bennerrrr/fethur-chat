@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { browser } from '$app/environment';
 	import { LoadingSpinner } from '$lib/components/ui';
+	import { apiClient } from '$lib/api/client';
 
 	let loading = true;
 	let error = '';
@@ -18,28 +19,28 @@
 					goto('/');
 					return;
 				}
+				// Set the token in the API client
+				apiClient.setToken(token);
 			}
 
-			// Try to check backend availability
+			// Try to check backend availability and get user info
 			try {
-				const response = await fetch('/api/health', {
-					method: 'GET',
-					headers: {
-						'Content-Type': 'application/json'
-					}
-				});
-				backendAvailable = response.ok;
+				await apiClient.healthCheck();
+				backendAvailable = true;
+				
+				// Get current user info
+				currentUser = await apiClient.getCurrentUser();
 			} catch (err) {
-				console.warn('Backend not available, using offline mode');
+				console.warn('Backend not available or authentication failed:', err);
 				backendAvailable = false;
+				
+				// Fallback to mock user for demonstration
+				currentUser = {
+					id: 1,
+					username: 'TestUser',
+					email: 'test@example.com'
+				};
 			}
-
-			// Mock user for demonstration
-			currentUser = {
-				id: 1,
-				username: 'TestUser',
-				email: 'test@example.com'
-			};
 
 		} catch (err) {
 			console.error('Error:', err);
@@ -102,7 +103,7 @@
 								<p>The backend server is not currently available. This is a demonstration of the frontend interface.</p>
 								<p><strong>To enable full functionality:</strong></p>
 								<ul>
-									<li>Start the backend server (make sure it's running on port 8080)</li>
+									<li>Start the backend server (make sure it's running on port 8081)</li>
 									<li>Refresh this page</li>
 								</ul>
 							</div>

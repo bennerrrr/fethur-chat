@@ -1,216 +1,273 @@
-# Fethur 🚀
+# Feathur - Lightweight Discord Alternative
 
-A lightweight, self-hostable Discord alternative built with performance and efficiency in mind.
+A modern, self-hosted chat application built with Go (backend) and SvelteKit (frontend), featuring real-time messaging, voice channels, and admin-controlled authentication.
 
-## What is Fethur?
+## 🚀 Features
 
-Fethur is an open-source, self-hostable communication platform that provides:
-- **Real-time messaging** with WebSocket support
-- **Voice channels** with WebRTC (coming soon)
-- **Screen sharing** capabilities (coming soon)
-- **Server management** with channels and permissions
-- **Lightweight design** - uses minimal system resources
-- **Easy deployment** - single binary, no complex setup
+### Core Chat Features
+- **Real-time Messaging**: WebSocket-based instant messaging
+- **Server & Channel Management**: Create and manage servers with multiple channels
+- **User Authentication**: JWT-based authentication with role-based access
+- **Voice Channels**: WebRTC-powered voice communication (coming soon)
 
-## Why Fethur?
+### Authentication & Access Control
+- **Guest Mode**: Allow users to access chat without registration (admin-controlled)
+- **Auto-Login**: Automatic authentication with default credentials (admin-controlled)
+- **Role-Based Access**: User, Admin, and Super Admin roles
+- **Admin Settings Panel**: Web-based configuration interface
 
-- **Performance First**: Built for speed and efficiency
-- **Self-Hosted**: Your data, your control
-- **Lightweight**: Uses <50MB RAM, starts in <2 seconds
-- **Modern Stack**: Go backend, Svelte frontend
-- **Open Source**: Transparent, auditable, customizable
+### Admin Features
+- **Settings Management**: Configure guest mode, auto-login, and default credentials
+- **User Management**: View and manage user accounts
+- **Server Administration**: Create and manage servers and channels
+- **Real-time Monitoring**: Monitor active users and system status
 
-## Quick Start
+## 🛠️ Technology Stack
 
-### Option 1: Development Mode (Recommended)
+### Backend
+- **Go** with Gin framework
+- **SQLite** database
+- **WebSocket** for real-time communication
+- **JWT** for authentication
+- **CORS** enabled for cross-origin requests
 
-```bash
-# Install dependencies
-make deps
+### Frontend
+- **SvelteKit** with TypeScript
+- **Tailwind CSS** for styling
+- **Vite** for development and building
+- **pnpm** for package management
 
-# Run in development mode
-make dev
-```
-
-### Option 2: Docker (Production-like)
-
-```bash
-# Build and run with Docker Compose
-make docker-run
-
-# Stop containers
-make docker-stop
-```
-
-### Option 3: Manual Setup
-
-```bash
-# Navigate to server directory
-cd server
-
-# Install dependencies
-go mod tidy
-
-# Run the server
-go run cmd/server/main.go
-```
-
-The server will start on `http://localhost:8080`
-
-### API Testing
-
-```bash
-# Health check
-curl http://localhost:8080/health
-
-# Register a user
-curl -X POST http://localhost:8080/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"username": "testuser", "email": "test@example.com", "password": "password123"}'
-```
-
-## Project Structure
-
-```
-fethur/
-├── server/                 # Go backend
-│   ├── cmd/server/        # Main application
-│   ├── internal/          # Private application code
-│   ├── pkg/               # Public libraries
-│   ├── .golangci.yml      # Linting configuration
-│   └── README.md          # Server documentation
-├── client/                # Frontend applications (coming soon)
-├── docs/                  # Documentation
-├── scripts/               # Build and deployment scripts
-├── docker/                # Docker configurations
-│   └── Dockerfile         # Multi-stage Docker build
-├── .github/workflows/     # GitHub Actions
-│   ├── ci.yml            # CI pipeline
-│   └── release.yml       # Release pipeline
-├── docker-compose.yml     # Local development setup
-├── Makefile              # Development commands
-└── README.md             # This file
-```
-
-## Features
-
-### ✅ Implemented
-- User authentication (JWT)
-- Server and channel management
-- Real-time messaging
-- Typing indicators
-- SQLite database
-- RESTful API
-
-### 🚧 In Development
-- Voice channels (WebRTC)
-- Screen sharing
-- Desktop client (Electron)
-- Web client (Svelte)
-- Mobile app
-
-### 📋 Planned
-- File uploads
-- User avatars
-- Advanced permissions
-- Bot API
-- Cloud hosting
-
-## Performance
-
-- **Memory Usage**: <50MB per client
-- **Startup Time**: <2 seconds
-- **Message Latency**: <100ms
-- **Concurrent Users**: 100+ tested
-- **Docker Image Size**: <50MB
-- **CI Pipeline Time**: <5 minutes
-
-## Development
+## 📦 Installation
 
 ### Prerequisites
 - Go 1.21+
-- Docker & Docker Compose (for containerized development)
-- Node.js 18+ (for client development)
-- SQLite (included with Go)
+- Node.js 18+
+- pnpm (recommended) or npm
 
-### Development Commands
+### Quick Start
 
-```bash
-# Show all available commands
-make help
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd Feathur
+   ```
 
-# Development workflow
-make deps          # Install dependencies
-make dev           # Run server in development mode
-make test          # Run tests
-make lint          # Run linter
-make fmt           # Format code
+2. **Install dependencies**
+   ```bash
+   # Install Go dependencies
+   make deps
+   
+   # Install frontend dependencies
+   cd client && ./setup.sh install
+   ```
 
-# Building
-make build         # Build binary
-make clean         # Clean build artifacts
+3. **Start the application**
+   ```bash
+   # Start both backend and frontend
+   make dev
+   ```
 
-# Docker
-make docker-build  # Build Docker image
-make docker-run    # Run with Docker Compose
-make docker-stop   # Stop containers
+4. **Access the application**
+   - Frontend: http://localhost:5173
+   - Backend API: http://localhost:8081
+   - Admin Panel: http://localhost:5173/admin
 
-# Testing & Quality
-make test-coverage # Run tests with coverage report
-make security      # Run security scan
-make bench         # Run performance benchmarks
+## 🔧 Configuration
+
+### Initial Setup
+On first run, the application will guide you through a setup wizard to configure:
+- Network settings (hostname, port, SSL)
+- Authentication mode
+- Admin account creation
+- Optional default user account
+
+### Admin Settings
+Access the admin panel at `/admin` to configure:
+
+#### Authentication Settings
+- **Guest Mode**: Enable/disable access without authentication
+- **Auto-Login**: Enable automatic login with default credentials
+- **Default Username**: Username for auto-login
+- **Default Password**: Password for auto-login
+
+#### Security Notes
+- Auto-login should only be used in development or controlled environments
+- Default credentials are stored in the database and can be changed via admin panel
+- Guest mode bypasses authentication entirely
+
+### Default Credentials
+- **Super Admin**: `superadmin` / `superadmin123!`
+- **Auto-Login User**: `testuser` / `password123!` (configurable)
+
+## 🎯 Usage
+
+### For Users
+
+#### Guest Access
+1. Visit the application homepage
+2. Click "Continue as Guest"
+3. Automatically logged in with default credentials
+4. Start chatting immediately
+
+#### Regular Login
+1. Visit the application homepage
+2. Enter username and password
+3. Click "Login"
+4. Access chat interface
+
+### For Admins
+
+#### Access Admin Panel
+1. Login with admin or super admin credentials
+2. Navigate to `/admin`
+3. Configure authentication settings
+4. Manage users and servers
+
+#### Configure Guest Mode
+1. Go to Admin Panel → Authentication Settings
+2. Enable "Guest Mode"
+3. Enable "Auto Login" (optional)
+4. Set default credentials if using auto-login
+5. Save settings
+
+## 🔌 API Endpoints
+
+### Authentication
+- `POST /api/auth/register` - User registration
+- `POST /api/auth/login` - User login
+- `POST /api/auth/guest` - Guest login (requires guest mode enabled)
+- `GET /api/auth/me` - Get current user info
+
+### Admin Settings
+- `GET /api/settings` - Get all settings (admin only)
+- `POST /api/settings` - Update settings (admin only)
+
+### Servers & Channels
+- `GET /api/servers` - List servers
+- `POST /api/servers` - Create server
+- `GET /api/servers/:id/channels` - List channels
+- `POST /api/servers/:id/channels` - Create channel
+
+### Messaging
+- `GET /api/channels/:id/messages` - Get messages
+- `POST /api/channels/:id/messages` - Send message
+- `GET /ws` - WebSocket connection for real-time messaging
+
+### System
+- `GET /health` - Health check
+- `GET /api/setup/status` - Setup status
+- `POST /api/setup/configure` - Configure system
+
+## 🏗️ Development
+
+### Project Structure
+```
+Feathur/
+├── server/                 # Go backend
+│   ├── cmd/server/        # Main application entry
+│   ├── internal/          # Internal packages
+│   │   ├── auth/         # Authentication logic
+│   │   ├── database/     # Database operations
+│   │   ├── server/       # HTTP server and routes
+│   │   ├── websocket/    # WebSocket handling
+│   │   └── voice/        # Voice channel logic
+│   └── data/             # SQLite database
+├── client/                # SvelteKit frontend
+│   └── web/
+│       ├── src/
+│       │   ├── lib/      # Shared libraries
+│       │   │   ├── api/  # API client
+│       │   │   ├── components/ # UI components
+│       │   │   └── stores/     # State management
+│       │   └── routes/   # Page routes
+│       └── static/       # Static assets
+└── docs/                 # Documentation
 ```
 
-### CI/CD Pipeline
+### Development Commands
+```bash
+# Start development servers
+make dev
 
-This project uses GitHub Actions for automated testing and deployment:
+# Run tests
+make test
 
-- **CI Pipeline**: Runs on every push and pull request
-  - Unit tests with coverage
-  - Code linting with golangci-lint
-  - Security scanning with Trivy
-  - Multi-platform builds
-  - Docker image testing
+# Build for production
+make build
 
-- **Release Pipeline**: Runs on version tags (v*)
-  - Creates GitHub releases
-  - Builds multi-platform binaries
-  - Publishes Docker images to GHCR
+# Clean build artifacts
+make clean
+```
 
-### Contributing
+### Environment Variables
+Create a `.env` file in `client/web/`:
+```env
+PUBLIC_API_URL=http://localhost:8081
+PUBLIC_WS_URL=ws://localhost:8081
+PUBLIC_DEV_MODE=true
+PUBLIC_LOG_LEVEL=debug
+```
+
+## 🔒 Security
+
+### Authentication
+- JWT tokens with 24-hour expiration
+- Password requirements: minimum 9 characters, numbers, and special characters
+- Role-based access control (user, admin, super_admin)
+- CORS configured for development and production
+
+### Data Protection
+- Passwords hashed with bcrypt
+- SQL injection protection via parameterized queries
+- XSS protection through proper input validation
+- CSRF protection via token validation
+
+## 🚀 Deployment
+
+### Docker Deployment
+```bash
+# Build and run with Docker Compose
+docker-compose up -d
+```
+
+### Manual Deployment
+1. Build the application: `make build`
+2. Set environment variables
+3. Run the server: `./server/fethur-server`
+4. Serve the frontend from `client/web/build/`
+
+## 🤝 Contributing
+
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Add tests (`make test`)
-5. Run linter (`make lint`)
-6. Submit a pull request
+4. Add tests if applicable
+5. Submit a pull request
 
-**Note**: All PRs must pass CI checks before merging.
+## 📄 License
 
-## License
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-MIT License - see LICENSE file for details
+## 🆘 Support
 
-## Documentation
+- **Issues**: Report bugs and feature requests on GitHub
+- **Documentation**: Check the `/docs` folder for detailed guides
+- **Discussions**: Use GitHub Discussions for questions and ideas
 
-📚 **Comprehensive Documentation**: Visit [`/docs`](docs/) for organized documentation including:
-- **[Project Planning](docs/project-planning/)** - Roadmaps, feature analysis, and strategic planning
-- **[Technical](docs/technical/)** - WebRTC guides, plugin architecture, and implementation details
-- **[Deployment](docs/deployment/)** - CI/CD setup, deployment guides, and contribution guidelines
-- **[Business](docs/business/)** - Monetization plans and implementation roadmaps
+## 🔄 Recent Updates
 
-🚀 **Quick Links by Role**:
-- **Developers**: [Contributing Guide](docs/deployment/CONTRIBUTING.md) • [Project Plan](docs/project-planning/PROJECT_PLAN.md) • [Feature Analysis](docs/project-planning/FEATURE_ANALYSIS_REPORT.md)
-- **DevOps**: [Deployment Guide](docs/deployment/DEPLOYMENT.md) • [GitHub Actions Plan](docs/deployment/COMPREHENSIVE_GITHUB_ACTIONS_PLAN.md)
-- **Architects**: [WebRTC Implementation](docs/technical/WEBRTC_PERFORMANCE_IMPLEMENTATION_GUIDE.md) • [Plugin Architecture](docs/technical/PLUGIN_BOT_ARCHITECTURE_RESEARCH.md)
+### v1.1.0 - Authentication & Admin Features
+- ✅ Added guest mode with admin controls
+- ✅ Implemented auto-login functionality
+- ✅ Created admin settings panel
+- ✅ Fixed CORS issues
+- ✅ Added real-time messaging
+- ✅ Implemented proper authentication flow
+- ✅ Added role-based access control
+- ✅ Created comprehensive API documentation
 
-## Support
-
-- **Issues**: [GitHub Issues](https://github.com/bennerrrr/fethur-chat/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/bennerrrr/fethur-chat/discussions)
-- **Actions**: [GitHub Actions](https://github.com/bennerrrr/fethur-chat/actions)
-- **Docker Images**: [GitHub Container Registry](https://github.com/bennerrrr/fethur-chat/packages)
-
----
-
-Built with ❤️ for the open source community # Trigger CI test
+### v1.0.0 - Initial Release
+- ✅ Basic chat functionality
+- ✅ User authentication
+- ✅ Server and channel management
+- ✅ WebSocket real-time communication

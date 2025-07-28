@@ -312,7 +312,7 @@
 							</div>
 							<div class="setting-item">
 								<label>Port</label>
-								<div class="setting-value">{settings.port || '8080'}</div>
+								<div class="setting-value">{settings.port || '8081'}</div>
 							</div>
 							<div class="setting-item">
 								<label>SSL Enabled</label>

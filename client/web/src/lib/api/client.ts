@@ -13,7 +13,7 @@ import type {
 } from '$lib/types';
 import { getStorageItem, setStorageItem, removeStorageItem } from '$lib/utils';
 
-const API_BASE_URL = PUBLIC_API_URL || 'http://localhost:8080';
+const API_BASE_URL = PUBLIC_API_URL || 'http://localhost:8081';
 
 class ApiError extends Error {
 	constructor(
@@ -27,7 +27,7 @@ class ApiError extends Error {
 }
 
 class ApiClient {
-	private baseUrl: string;
+	public baseUrl: string;
 	private token: string | null = null;
 
 	constructor(baseUrl: string = API_BASE_URL) {
@@ -230,14 +230,23 @@ class ApiClient {
 	}
 
 	// Health check
-	async healthCheck(): Promise<{ status: string; timestamp: string }> {
-		const response = await this.request<{ status: string; timestamp: string }>('/health');
-		
-		if (response.success && response.data) {
-			return response.data;
+	async healthCheck(): Promise<{ status: string; message: string }> {
+		try {
+			const url = `${this.baseUrl}/health`;
+			const response = await fetch(url);
+			
+			if (!response.ok) {
+				throw new ApiError(response.status, 'Health check failed');
+			}
+			
+			const data = await response.json();
+			return data;
+		} catch (error) {
+			if (error instanceof ApiError) {
+				throw error;
+			}
+			throw new ApiError(0, 'Network error or server unavailable');
 		}
-
-		throw new ApiError(500, 'Health check failed');
 	}
 
 	// Token management

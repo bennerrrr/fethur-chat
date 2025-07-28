@@ -10,7 +10,7 @@
 	let config = {
 		network: {
 			hostname: 'localhost',
-			port: '8080',
+			port: '8081',
 			ssl: false,
 			externalDomain: '',
 			mdns: true
@@ -113,6 +113,29 @@
 		}
 	}
 
+	async function handleGuestLogin() {
+		try {
+			const response = await fetch('/api/auth/guest', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({})
+			});
+
+			if (response.ok) {
+				const data = await response.json();
+				localStorage.setItem('token', data.token);
+				window.location.href = '/chat';
+			} else {
+				const data = await response.json();
+				error = data.error || 'Guest login failed';
+			}
+		} catch (err) {
+			error = 'Guest login failed';
+		}
+	}
+
 	function validateStep() {
 		switch (currentStep) {
 			case 1: // Network
@@ -172,7 +195,7 @@
 					</div>
 					<div class="form-group">
 						<label for="port">Port</label>
-						<input id="port" type="number" bind:value={config.network.port} placeholder="8080" />
+						<input id="port" type="number" bind:value={config.network.port} placeholder="8081" />
 					</div>
 					<div class="form-group checkbox-group">
 						<label class="checkbox-label">
@@ -335,6 +358,12 @@
 
 		<div style="margin-top: 1.5rem; text-align: center;">
 			<a href="/register" style="color: var(--color-accent);">Need an account? Register here</a>
+		</div>
+		
+		<div style="margin-top: 1rem; text-align: center;">
+			<button type="button" class="secondary-button" on:click={handleGuestLogin}>
+				👤 Continue as Guest
+			</button>
 		</div>
 	</div>
 {/if}
