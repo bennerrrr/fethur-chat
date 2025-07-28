@@ -303,6 +303,23 @@ func (c *Client) UnsubscribeFromChannel(channelID int) {
 	c.mutex.Unlock()
 }
 
+// Getter methods for accessing private fields
+func (c *Client) GetUserID() int {
+	return c.userID
+}
+
+func (c *Client) GetUsername() string {
+	return c.username
+}
+
+func (c *Client) GetConnection() *websocket.Conn {
+	return c.conn
+}
+
+func (c *Client) Close() error {
+	return c.conn.Close()
+}
+
 func messageToBytes(message *Message) []byte {
 	bytes, err := json.Marshal(message)
 	if err != nil {

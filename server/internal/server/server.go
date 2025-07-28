@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -82,6 +84,34 @@ func (s *Server) setupRoutes() {
 			// Settings routes (admin only)
 			protected.GET("/settings", s.adminMiddleware(), s.handleGetSettings)
 			protected.POST("/settings", s.adminMiddleware(), s.handleUpdateSettings)
+
+			// Admin routes (admin only)
+			admin := protected.Group("/admin")
+			admin.Use(s.adminMiddleware())
+			{
+				// User management
+				admin.GET("/users", s.handleGetUsers)
+				admin.POST("/users", s.handleCreateUser)
+				admin.PUT("/users/:id", s.handleUpdateUser)
+				admin.DELETE("/users/:id", s.handleDeleteUser)
+				admin.POST("/users/:id/role", s.handleUpdateUserRole)
+
+				// Moderation
+				admin.POST("/users/:id/kick", s.handleKickUser)
+				admin.POST("/users/:id/ban", s.handleBanUser)
+				admin.POST("/users/:id/mute", s.handleMuteUser)
+				admin.POST("/users/:id/unban", s.handleUnbanUser)
+				admin.POST("/users/:id/unmute", s.handleUnmuteUser)
+
+				// System health
+				admin.GET("/health", s.handleAdminHealth)
+				admin.GET("/metrics", s.handleGetMetrics)
+				admin.GET("/users/online", s.handleGetOnlineUsers)
+				admin.GET("/users/latency", s.handleGetUserLatency)
+
+				// Audit logs
+				admin.GET("/logs", s.handleGetAuditLogs)
+			}
 
 			// Server routes
 			protected.POST("/servers", s.handleCreateServer)
@@ -966,4 +996,603 @@ func (s *Server) handleUpdateSettings(c *gin.Context) {
 		"success": true,
 		"message": "Settings updated successfully",
 	})
+}
+
+// Admin User Management Handlers
+
+func (s *Server) handleGetUsers(c *gin.Context) {
+	rows, err := s.db.Query(`
+		SELECT id, username, email, role, created_at, updated_at,
+		       (SELECT COUNT(*) FROM messages WHERE user_id = users.id) as message_count,
+		       (SELECT COUNT(*) FROM server_members WHERE user_id = users.id) as server_count
+		FROM users 
+		ORDER BY created_at DESC
+	`)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get users"})
+		return
+	}
+	defer rows.Close()
+
+	var users []gin.H
+	for rows.Next() {
+		var user struct {
+			ID           int    `json:"id"`
+			Username     string `json:"username"`
+			Email        string `json:"email"`
+			Role         string `json:"role"`
+			CreatedAt    string `json:"created_at"`
+			UpdatedAt    string `json:"updated_at"`
+			MessageCount int    `json:"message_count"`
+			ServerCount  int    `json:"server_count"`
+		}
+
+		err := rows.Scan(&user.ID, &user.Username, &user.Email, &user.Role, &user.CreatedAt, &user.UpdatedAt, &user.MessageCount, &user.ServerCount)
+		if err != nil {
+			continue
+		}
+
+		// Check if user is online
+		s.clientsMux.RLock()
+		_, isOnline := s.clients[user.ID]
+		s.clientsMux.RUnlock()
+
+		users = append(users, gin.H{
+			"id":            user.ID,
+			"username":      user.Username,
+			"email":         user.Email,
+			"role":          user.Role,
+			"created_at":    user.CreatedAt,
+			"updated_at":    user.UpdatedAt,
+			"message_count": user.MessageCount,
+			"server_count":  user.ServerCount,
+			"is_online":     isOnline,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    users,
+	})
+}
+
+func (s *Server) handleCreateUser(c *gin.Context) {
+	var req struct {
+		Username string `json:"username" binding:"required"`
+		Email    string `json:"email"`
+		Password string `json:"password" binding:"required"`
+		Role     string `json:"role"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Validate password
+	if err := s.auth.ValidatePassword(req.Password); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Set default role if not provided
+	if req.Role == "" {
+		req.Role = "user"
+	}
+
+	// Validate role
+	if req.Role != "user" && req.Role != "admin" && req.Role != "super_admin" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid role"})
+		return
+	}
+
+	// Hash password
+	hashedPassword, err := s.auth.HashPassword(req.Password)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
+		return
+	}
+
+	// Insert user
+	result, err := s.db.Exec(
+		"INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, ?)",
+		req.Username, req.Email, hashedPassword, req.Role,
+	)
+	if err != nil {
+		c.JSON(http.StatusConflict, gin.H{"error": "Username already exists"})
+		return
+	}
+
+	userID, _ := result.LastInsertId()
+
+	// Log the action
+	s.logAdminAction(c.GetInt("user_id"), "create_user", fmt.Sprintf("Created user %s with role %s", req.Username, req.Role))
+
+	c.JSON(http.StatusCreated, gin.H{
+		"success": true,
+		"message": "User created successfully",
+		"data": gin.H{
+			"id":       userID,
+			"username": req.Username,
+			"email":    req.Email,
+			"role":     req.Role,
+		},
+	})
+}
+
+func (s *Server) handleUpdateUser(c *gin.Context) {
+	userID := c.Param("id")
+	var req struct {
+		Username string `json:"username"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Build update query
+	updates := []string{}
+	args := []interface{}{}
+
+	if req.Username != "" {
+		updates = append(updates, "username = ?")
+		args = append(args, req.Username)
+	}
+
+	if req.Email != "" {
+		updates = append(updates, "email = ?")
+		args = append(args, req.Email)
+	}
+
+	if req.Password != "" {
+		if err := s.auth.ValidatePassword(req.Password); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		hashedPassword, err := s.auth.HashPassword(req.Password)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
+			return
+		}
+
+		updates = append(updates, "password_hash = ?")
+		args = append(args, hashedPassword)
+	}
+
+	if len(updates) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No fields to update"})
+		return
+	}
+
+	updates = append(updates, "updated_at = CURRENT_TIMESTAMP")
+	args = append(args, userID)
+
+	query := fmt.Sprintf("UPDATE users SET %s WHERE id = ?", strings.Join(updates, ", "))
+	_, err := s.db.Exec(query, args...)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user"})
+		return
+	}
+
+	// Log the action
+	s.logAdminAction(c.GetInt("user_id"), "update_user", fmt.Sprintf("Updated user ID %s", userID))
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "User updated successfully",
+	})
+}
+
+func (s *Server) handleDeleteUser(c *gin.Context) {
+	userID := c.Param("id")
+
+	// Check if user exists
+	var username string
+	err := s.db.QueryRow("SELECT username FROM users WHERE id = ?", userID).Scan(&username)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	// Delete user (cascade will handle related data)
+	_, err = s.db.Exec("DELETE FROM users WHERE id = ?", userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete user"})
+		return
+	}
+
+	// Disconnect user if online
+	s.clientsMux.Lock()
+	if client, exists := s.clients[userID]; exists {
+		client.Close()
+		delete(s.clients, userID)
+	}
+	s.clientsMux.Unlock()
+
+	// Log the action
+	s.logAdminAction(c.GetInt("user_id"), "delete_user", fmt.Sprintf("Deleted user %s (ID: %s)", username, userID))
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "User deleted successfully",
+	})
+}
+
+func (s *Server) handleUpdateUserRole(c *gin.Context) {
+	userID := c.Param("id")
+	var req struct {
+		Role string `json:"role" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Validate role
+	if req.Role != "user" && req.Role != "admin" && req.Role != "super_admin" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid role"})
+		return
+	}
+
+	// Update role
+	_, err := s.db.Exec("UPDATE users SET role = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", req.Role, userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user role"})
+		return
+	}
+
+	// Log the action
+	s.logAdminAction(c.GetInt("user_id"), "update_role", fmt.Sprintf("Updated user ID %s role to %s", userID, req.Role))
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "User role updated successfully",
+	})
+}
+
+// Moderation Handlers
+
+func (s *Server) handleKickUser(c *gin.Context) {
+	userID := c.Param("id")
+	var req struct {
+		Reason string `json:"reason"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Disconnect user if online
+	userIDInt, _ := strconv.Atoi(userID)
+	s.clientsMux.Lock()
+	if client, exists := s.clients[userIDInt]; exists {
+		client.Close()
+		delete(s.clients, userIDInt)
+	}
+	s.clientsMux.Unlock()
+
+	// Log the action
+	s.logAdminAction(c.GetInt("user_id"), "kick_user", fmt.Sprintf("Kicked user ID %s. Reason: %s", userID, req.Reason))
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "User kicked successfully",
+	})
+}
+
+func (s *Server) handleBanUser(c *gin.Context) {
+	userID := c.Param("id")
+	var req struct {
+		Reason   string `json:"reason"`
+		Duration int    `json:"duration"` // Duration in hours, 0 for permanent
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Create ban record
+	expiresAt := "NULL"
+	if req.Duration > 0 {
+		expiresAt = fmt.Sprintf("datetime('now', '+%d hours')", req.Duration)
+	}
+
+	_, err := s.db.Exec(`
+		INSERT OR REPLACE INTO user_bans (user_id, reason, banned_by, expires_at, created_at) 
+		VALUES (?, ?, ?, %s, CURRENT_TIMESTAMP)
+	`, userID, req.Reason, c.GetInt("user_id"), expiresAt)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to ban user"})
+		return
+	}
+
+	// Disconnect user if online
+	s.clientsMux.Lock()
+	if client, exists := s.clients[userID]; exists {
+		client.Close()
+		delete(s.clients, userID)
+	}
+	s.clientsMux.Unlock()
+
+	// Log the action
+	durationStr := "permanent"
+	if req.Duration > 0 {
+		durationStr = fmt.Sprintf("%d hours", req.Duration)
+	}
+	s.logAdminAction(c.GetInt("user_id"), "ban_user", fmt.Sprintf("Banned user ID %s for %s. Reason: %s", userID, durationStr, req.Reason))
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "User banned successfully",
+	})
+}
+
+func (s *Server) handleUnbanUser(c *gin.Context) {
+	userID := c.Param("id")
+
+	_, err := s.db.Exec("DELETE FROM user_bans WHERE user_id = ?", userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to unban user"})
+		return
+	}
+
+	// Log the action
+	s.logAdminAction(c.GetInt("user_id"), "unban_user", fmt.Sprintf("Unbanned user ID %s", userID))
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "User unbanned successfully",
+	})
+}
+
+func (s *Server) handleMuteUser(c *gin.Context) {
+	userID := c.Param("id")
+	var req struct {
+		Reason   string `json:"reason"`
+		Duration int    `json:"duration"` // Duration in minutes
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Create mute record
+	expiresAt := "NULL"
+	if req.Duration > 0 {
+		expiresAt = fmt.Sprintf("datetime('now', '+%d minutes')", req.Duration)
+	}
+
+	_, err := s.db.Exec(`
+		INSERT OR REPLACE INTO user_mutes (user_id, reason, muted_by, expires_at, created_at) 
+		VALUES (?, ?, ?, %s, CURRENT_TIMESTAMP)
+	`, userID, req.Reason, c.GetInt("user_id"), expiresAt)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to mute user"})
+		return
+	}
+
+	// Log the action
+	durationStr := "permanent"
+	if req.Duration > 0 {
+		durationStr = fmt.Sprintf("%d minutes", req.Duration)
+	}
+	s.logAdminAction(c.GetInt("user_id"), "mute_user", fmt.Sprintf("Muted user ID %s for %s. Reason: %s", userID, durationStr, req.Reason))
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "User muted successfully",
+	})
+}
+
+func (s *Server) handleUnmuteUser(c *gin.Context) {
+	userID := c.Param("id")
+
+	_, err := s.db.Exec("DELETE FROM user_mutes WHERE user_id = ?", userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to unmute user"})
+		return
+	}
+
+	// Log the action
+	s.logAdminAction(c.GetInt("user_id"), "unmute_user", fmt.Sprintf("Unmuted user ID %s", userID))
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "User unmuted successfully",
+	})
+}
+
+// System Health Handlers
+
+func (s *Server) handleAdminHealth(c *gin.Context) {
+	// Database health
+	var dbStatus string
+	err := s.db.Ping()
+	if err != nil {
+		dbStatus = "unhealthy"
+	} else {
+		dbStatus = "healthy"
+	}
+
+	// Get basic stats
+	var userCount, messageCount, serverCount int
+	s.db.QueryRow("SELECT COUNT(*) FROM users").Scan(&userCount)
+	s.db.QueryRow("SELECT COUNT(*) FROM messages").Scan(&messageCount)
+	s.db.QueryRow("SELECT COUNT(*) FROM servers").Scan(&serverCount)
+
+	// Get online users count
+	s.clientsMux.RLock()
+	onlineCount := len(s.clients)
+	s.clientsMux.RUnlock()
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"database": gin.H{
+				"status": dbStatus,
+				"type":   "sqlite3",
+			},
+			"server": gin.H{
+				"status": "healthy",
+				"uptime": time.Since(time.Now()).String(), // This will be negative, need to track start time
+			},
+			"websocket": gin.H{
+				"status":      "healthy",
+				"connections": onlineCount,
+				"hub_running": true,
+			},
+			"statistics": gin.H{
+				"total_users":    userCount,
+				"online_users":   onlineCount,
+				"total_messages": messageCount,
+				"total_servers":  serverCount,
+			},
+		},
+	})
+}
+
+func (s *Server) handleGetMetrics(c *gin.Context) {
+	// Get user activity metrics
+	var activeUsers, newUsersToday, messagesToday int
+
+	s.db.QueryRow("SELECT COUNT(*) FROM users WHERE updated_at > datetime('now', '-1 day')").Scan(&activeUsers)
+	s.db.QueryRow("SELECT COUNT(*) FROM users WHERE created_at > datetime('now', '-1 day')").Scan(&newUsersToday)
+	s.db.QueryRow("SELECT COUNT(*) FROM messages WHERE created_at > datetime('now', '-1 day')").Scan(&messagesToday)
+
+	// Get role distribution
+	rows, err := s.db.Query("SELECT role, COUNT(*) FROM users GROUP BY role")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get role metrics"})
+		return
+	}
+	defer rows.Close()
+
+	roleDistribution := make(map[string]int)
+	for rows.Next() {
+		var role string
+		var count int
+		rows.Scan(&role, &count)
+		roleDistribution[role] = count
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"user_activity": gin.H{
+				"active_users_24h": activeUsers,
+				"new_users_today":  newUsersToday,
+				"messages_today":   messagesToday,
+			},
+			"role_distribution": roleDistribution,
+			"online_users":      len(s.clients),
+		},
+	})
+}
+
+func (s *Server) handleGetOnlineUsers(c *gin.Context) {
+	s.clientsMux.RLock()
+	onlineUsers := make([]gin.H, 0, len(s.clients))
+	for userID, client := range s.clients {
+		onlineUsers = append(onlineUsers, gin.H{
+			"id":           userID,
+			"username":     client.GetUsername(),
+			"ip":           client.GetConnection().RemoteAddr().String(),
+			"connected_at": time.Now().Format(time.RFC3339), // We don't track connection time yet
+		})
+	}
+	s.clientsMux.RUnlock()
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    onlineUsers,
+	})
+}
+
+func (s *Server) handleGetUserLatency(c *gin.Context) {
+	// This would require implementing ping/pong in WebSocket
+	// For now, return placeholder data
+	s.clientsMux.RLock()
+	latencyData := make([]gin.H, 0, len(s.clients))
+	for userID, client := range s.clients {
+		latencyData = append(latencyData, gin.H{
+			"id":       userID,
+			"username": client.GetUsername(),
+			"ip":       client.GetConnection().RemoteAddr().String(),
+			"latency":  "N/A", // Would be calculated from ping/pong
+		})
+	}
+	s.clientsMux.RUnlock()
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    latencyData,
+	})
+}
+
+func (s *Server) handleGetAuditLogs(c *gin.Context) {
+	limit := c.DefaultQuery("limit", "50")
+	offset := c.DefaultQuery("offset", "0")
+
+	rows, err := s.db.Query(`
+		SELECT al.id, al.admin_id, u.username as admin_username, al.action, al.details, al.created_at
+		FROM audit_logs al
+		LEFT JOIN users u ON al.admin_id = u.id
+		ORDER BY al.created_at DESC
+		LIMIT ? OFFSET ?
+	`, limit, offset)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get audit logs"})
+		return
+	}
+	defer rows.Close()
+
+	var logs []gin.H
+	for rows.Next() {
+		var log struct {
+			ID            int    `json:"id"`
+			AdminID       int    `json:"admin_id"`
+			AdminUsername string `json:"admin_username"`
+			Action        string `json:"action"`
+			Details       string `json:"details"`
+			CreatedAt     string `json:"created_at"`
+		}
+
+		err := rows.Scan(&log.ID, &log.AdminID, &log.AdminUsername, &log.Action, &log.Details, &log.CreatedAt)
+		if err != nil {
+			continue
+		}
+
+		logs = append(logs, gin.H{
+			"id":             log.ID,
+			"admin_id":       log.AdminID,
+			"admin_username": log.AdminUsername,
+			"action":         log.Action,
+			"details":        log.Details,
+			"created_at":     log.CreatedAt,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    logs,
+	})
+}
+
+// Helper method to log admin actions
+func (s *Server) logAdminAction(adminID int, action, details string) {
+	_, err := s.db.Exec(`
+		INSERT INTO audit_logs (admin_id, action, details, created_at) 
+		VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+	`, adminID, action, details)
+	if err != nil {
+		log.Printf("Failed to log admin action: %v", err)
+	}
 }

@@ -1,5 +1,4 @@
 import { browser } from '$app/environment';
-import { PUBLIC_API_URL } from '$env/static/public';
 import type {
 	ApiResponse,
 	PaginatedResponse,
@@ -13,7 +12,7 @@ import type {
 } from '$lib/types';
 import { getStorageItem, setStorageItem, removeStorageItem } from '$lib/utils';
 
-const API_BASE_URL = PUBLIC_API_URL || 'http://localhost:8081';
+const API_BASE_URL = 'http://localhost:8081';
 
 class ApiError extends Error {
 	constructor(
