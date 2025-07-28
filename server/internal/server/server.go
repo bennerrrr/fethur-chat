@@ -50,7 +50,7 @@ func (s *Server) setupRoutes() {
 	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
 	config.AllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization"}
 	config.AllowCredentials = true
-	
+
 	s.router.Use(cors.New(config))
 
 	// API routes
@@ -63,14 +63,14 @@ func (s *Server) setupRoutes() {
 			setup.POST("/configure", s.handleSetupConfigure)
 		}
 
-			// Auth routes
-	auth := api.Group("/auth")
-	{
-		auth.POST("/register", s.handleRegister)
-		auth.POST("/login", s.handleLogin)
-		auth.GET("/me", s.authMiddleware(), s.handleGetCurrentUser)
-		auth.POST("/guest", s.handleGuestLogin)
-	}
+		// Auth routes
+		auth := api.Group("/auth")
+		{
+			auth.POST("/register", s.handleRegister)
+			auth.POST("/login", s.handleLogin)
+			auth.GET("/me", s.authMiddleware(), s.handleGetCurrentUser)
+			auth.POST("/guest", s.handleGuestLogin)
+		}
 
 		// Protected routes
 		protected := api.Group("/")
@@ -81,7 +81,7 @@ func (s *Server) setupRoutes() {
 
 			// Settings routes (admin only)
 			protected.GET("/settings", s.adminMiddleware(), s.handleGetSettings)
-	protected.POST("/settings", s.adminMiddleware(), s.handleUpdateSettings)
+			protected.POST("/settings", s.adminMiddleware(), s.handleUpdateSettings)
 
 			// Server routes
 			protected.POST("/servers", s.handleCreateServer)
@@ -94,7 +94,7 @@ func (s *Server) setupRoutes() {
 
 			// Message routes
 			protected.GET("/channels/:channelId/messages", s.handleGetMessages)
-		protected.POST("/channels/:channelId/messages", s.handleSendMessage)
+			protected.POST("/channels/:channelId/messages", s.handleSendMessage)
 		}
 	}
 
@@ -114,7 +114,7 @@ func (s *Server) handleHealth(c *gin.Context) {
 	c.Header("Access-Control-Allow-Origin", "*")
 	c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 	c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization")
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"status":  "healthy",
 		"message": "Fethur Server is running",
@@ -520,7 +520,11 @@ func (s *Server) handleGetServers(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get servers"})
 		return
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("Error closing rows: %v", err)
+		}
+	}()
 
 	var servers []gin.H
 	for rows.Next() {
@@ -668,7 +672,11 @@ func (s *Server) handleGetChannels(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get channels"})
 		return
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("Error closing rows: %v", err)
+		}
+	}()
 
 	var channels []gin.H
 	for rows.Next() {
@@ -727,7 +735,11 @@ func (s *Server) handleGetMessages(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get messages"})
 		return
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("Error closing rows: %v", err)
+		}
+	}()
 
 	var messages []gin.H
 	for rows.Next() {
@@ -782,7 +794,10 @@ func (s *Server) handleSendMessage(c *gin.Context) {
 
 	// Convert channelID to int for WebSocket message
 	channelIDInt := 0
-	fmt.Sscanf(channelID, "%d", &channelIDInt)
+	if _, err := fmt.Sscanf(channelID, "%d", &channelIDInt); err != nil {
+		log.Printf("Error parsing channel ID: %v", err)
+		channelIDInt = 0
+	}
 
 	// Broadcast message to all connected clients via WebSocket
 	wsMessage := &websocket.Message{

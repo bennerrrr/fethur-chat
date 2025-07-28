@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -296,9 +297,35 @@ func (m *Manager) Shutdown(ctx context.Context) error {
 // Private methods
 
 func (m *Manager) loadManifest(pluginPath string) (*PluginManifest, error) {
+	// Validate that the plugin path is within the allowed directory
+	absPluginPath, err := filepath.Abs(pluginPath)
+	if err != nil {
+		return nil, fmt.Errorf("invalid plugin path: %w", err)
+	}
+	
+	absPluginDir, err := filepath.Abs(m.config.PluginDir)
+	if err != nil {
+		return nil, fmt.Errorf("invalid plugin directory: %w", err)
+	}
+	
+	// Ensure the plugin path is within the plugin directory
+	if !strings.HasPrefix(absPluginPath, absPluginDir) {
+		return nil, fmt.Errorf("plugin path outside allowed directory")
+	}
+
 	manifestPath := filepath.Join(pluginPath, "plugin.yaml")
 	if _, err := os.Stat(manifestPath); os.IsNotExist(err) {
 		manifestPath = filepath.Join(pluginPath, "plugin.yml")
+	}
+
+	// Validate the final manifest path is also within the plugin directory
+	absManifestPath, err := filepath.Abs(manifestPath)
+	if err != nil {
+		return nil, fmt.Errorf("invalid manifest path: %w", err)
+	}
+	
+	if !strings.HasPrefix(absManifestPath, absPluginDir) {
+		return nil, fmt.Errorf("manifest path outside allowed directory")
 	}
 
 	data, err := os.ReadFile(manifestPath)

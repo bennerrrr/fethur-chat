@@ -48,7 +48,11 @@ func (db *Database) GetAllSettings() (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("Error closing rows: %v", err)
+		}
+	}()
 
 	settings := make(map[string]string)
 	for rows.Next() {
@@ -63,7 +67,7 @@ func (db *Database) GetAllSettings() (map[string]string, error) {
 
 func Init() (*Database, error) {
 	// Ensure data directory exists
-	if err := os.MkdirAll("./data", 0755); err != nil {
+	if err := os.MkdirAll("./data", 0750); err != nil {
 		return nil, fmt.Errorf("failed to create data directory: %w", err)
 	}
 
