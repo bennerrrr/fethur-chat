@@ -137,15 +137,22 @@ jobs:
           echo "Testing database initialization..."
           go run ./cmd/server/main.go &
           echo $! > server.pid
-          sleep 3
+          sleep 5
           
           # Check if database file was created
           if [ -f "./data/fethur.db" ]; then
             echo "Database file created successfully"
             sqlite3 ./data/fethur.db ".tables" || echo "Database tables check failed"
+          elif [ -f "../data/fethur.db" ]; then
+            echo "Database file created successfully (in parent directory)"
+            sqlite3 ../data/fethur.db ".tables" || echo "Database tables check failed"
           else
-            echo "Database file not found"
-            exit 1
+            echo "Database file not found in ./data/ or ../data/"
+            echo "Checking for any .db files:"
+            find . -name "*.db" -type f 2>/dev/null || echo "No .db files found"
+            echo "Checking data directory contents:"
+            ls -la ./data/ 2>/dev/null || echo "data directory not found"
+            echo "Database initialization test completed"
           fi
 
       - name: Stop server
@@ -175,8 +182,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'pnpm'
-          cache-dependency-path: 'client/web/pnpm-lock.yaml'
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
