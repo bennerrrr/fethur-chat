@@ -11,6 +11,7 @@ import (
 
 	"fethur/internal/auth"
 	"fethur/internal/database"
+	"fethur/internal/voice"
 	"fethur/internal/websocket"
 
 	"github.com/gin-contrib/cors"
@@ -21,6 +22,7 @@ type Server struct {
 	db         *database.Database
 	auth       *auth.Service
 	hub        *websocket.Hub
+	voiceHub   *voice.VoiceHub
 	router     *gin.Engine
 	clients    map[int]*websocket.Client
 	clientsMux sync.RWMutex
@@ -28,19 +30,24 @@ type Server struct {
 
 func New(db *database.Database, auth *auth.Service) *Server {
 	hub := websocket.NewHub()
+	voiceHub := voice.NewVoiceHub()
 
 	server := &Server{
-		db:      db,
-		auth:    auth,
-		hub:     hub,
-		router:  gin.Default(),
-		clients: make(map[int]*websocket.Client),
+		db:       db,
+		auth:     auth,
+		hub:      hub,
+		voiceHub: voiceHub,
+		router:   gin.Default(),
+		clients:  make(map[int]*websocket.Client),
 	}
 
 	server.setupRoutes()
 
 	// Start the WebSocket hub
 	go hub.Run()
+
+	// Start the voice hub
+	go voiceHub.Run()
 
 	return server
 }
@@ -130,6 +137,9 @@ func (s *Server) setupRoutes() {
 
 	// WebSocket endpoint
 	s.router.GET("/ws", s.authMiddleware(), s.handleWebSocket)
+
+	// Voice WebSocket endpoint
+	s.router.GET("/voice", s.authMiddleware(), s.voiceHub.HandleWebSocket)
 
 	// Health check
 	s.router.GET("/health", s.handleHealth)
@@ -1435,6 +1445,9 @@ func (s *Server) handleAdminHealth(c *gin.Context) {
 	onlineCount := len(s.clients)
 	s.clientsMux.RUnlock()
 
+	// Get voice statistics
+	voiceStats := s.voiceHub.GetVoiceStats()
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data": gin.H{
@@ -1451,6 +1464,7 @@ func (s *Server) handleAdminHealth(c *gin.Context) {
 				"connections": onlineCount,
 				"hub_running": true,
 			},
+			"voice": voiceStats,
 			"statistics": gin.H{
 				"total_users":    userCount,
 				"online_users":   onlineCount,

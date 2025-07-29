@@ -11,6 +11,7 @@
 	import ChannelList from '$lib/components/ui/ChannelList.svelte';
 	import EnhancedChatArea from '$lib/components/ui/EnhancedChatArea.svelte';
 	import UserList from '$lib/components/ui/UserList.svelte';
+	import VoiceControls from '$lib/components/ui/VoiceControls.svelte';
 	import type { User, Server, Channel } from '$lib/types';
 
 	let loading = true;
@@ -184,6 +185,11 @@
 			<a href="/admin" class="admin-link">🔧 Admin Dashboard</a>
 		</div>
 	{/if}
+
+	<!-- Voice Test Navigation -->
+	<div class="voice-test-nav">
+		<a href="/voice-test" class="voice-test-link">🎤 Voice Test</a>
+	</div>
 	
 	{#if loading}
 		<div class="loading-screen">
@@ -242,6 +248,16 @@
 						channel={currentChannel}
 						{currentUser}
 					/>
+					
+					<!-- Voice Controls for Voice Channels -->
+					{#if currentChannel.type === 'voice'}
+						<div class="voice-controls-container">
+							<VoiceControls 
+								channelId={currentChannel.id}
+								serverId={currentServer?.id || null}
+							/>
+						</div>
+					{/if}
 				{:else}
 					<div class="no-channel-selected">
 						<h2>Welcome to Fethur Chat!</h2>
@@ -463,6 +479,43 @@
 	.admin-link:hover {
 		transform: translateY(-1px);
 		box-shadow: 0 6px 12px -1px rgba(0, 0, 0, 0.15);
+	}
+
+	/* Voice Test Navigation */
+	.voice-test-nav {
+		position: absolute;
+		top: 1rem;
+		right: 8rem;
+		z-index: 100;
+	}
+
+	.voice-test-link {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5rem;
+		background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+		color: white;
+		text-decoration: none;
+		padding: 0.5rem 1rem;
+		border-radius: 0.5rem;
+		font-weight: 500;
+		font-size: 0.875rem;
+		transition: all 0.2s;
+		box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+	}
+
+	.voice-test-link:hover {
+		transform: translateY(-1px);
+		box-shadow: 0 6px 12px -1px rgba(0, 0, 0, 0.15);
+	}
+
+	/* Voice Controls */
+	.voice-controls-container {
+		position: fixed;
+		bottom: 4rem;
+		right: 1rem;
+		z-index: 50;
+		max-width: 300px;
 	}
 
 	/* Responsive design */

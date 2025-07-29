@@ -1,5 +1,7 @@
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
+import fs from 'fs';
+import path from 'path';
 
 export default defineConfig({
 	plugins: [sveltekit()],
@@ -7,9 +9,25 @@ export default defineConfig({
 		host: true,
 		port: 5173,
 		strictPort: false,
+		https: {
+			key: fs.readFileSync(path.resolve(__dirname, '../../ssl/key.pem')),
+			cert: fs.readFileSync(path.resolve(__dirname, '../../ssl/cert.pem'))
+		},
 		proxy: {
 			'/api': {
 				target: 'http://localhost:8081',
+				changeOrigin: true,
+				secure: false
+			},
+			'/ws': {
+				target: 'ws://localhost:8081',
+				ws: true,
+				changeOrigin: true,
+				secure: false
+			},
+			'/voice': {
+				target: 'ws://localhost:8081',
+				ws: true,
 				changeOrigin: true,
 				secure: false
 			}

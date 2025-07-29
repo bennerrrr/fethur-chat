@@ -12,7 +12,7 @@ import type {
 } from '$lib/types';
 import { getStorageItem, setStorageItem, removeStorageItem } from '$lib/utils';
 
-const API_BASE_URL = 'http://localhost:8081';
+const API_BASE_URL = import.meta.env.PUBLIC_API_URL || 'http://localhost:8081';
 
 class ApiError extends Error {
 	constructor(
