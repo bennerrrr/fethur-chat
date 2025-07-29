@@ -12,6 +12,7 @@
 	let metrics: any = null;
 	let auditLogs: any[] = [];
 	let userLatency: any[] = [];
+	let servers: any[] = [];
 	
 	let activeTab = 'users';
 	let isLoading = false;
@@ -30,10 +31,16 @@
 	let moderationReason = '';
 	let moderationDuration = 0;
 	
+	// Server management
+	let showCreateServerModal = false;
+	let newServer = { name: '', description: '' };
+	
 	onMount(async () => {
 		if (!browser) return;
 		
 		const token = localStorage.getItem('token');
+		console.log('Admin page - Token:', token ? 'Present' : 'Missing');
+		
 		if (!token) {
 			goto('/');
 			return;
@@ -44,16 +51,18 @@
 		try {
 			// Check if user is admin
 			currentUser = await apiClient.getCurrentUser();
-			console.log('Current user:', currentUser); // Debug log
+			console.log('Admin page - Current user:', currentUser);
 			
 			if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'super_admin')) {
+				console.log('Admin page - Access denied, role:', currentUser?.role);
 				error = 'Access denied. Admin privileges required.';
 				return;
 			}
 			
+			console.log('Admin page - Loading data...');
 			await loadData();
 		} catch (err: any) {
-			console.error('Admin page error:', err); // Debug log
+			console.error('Admin page error:', err);
 			error = err.message || 'Failed to load admin data';
 		}
 	});
@@ -70,7 +79,8 @@
 				loadMetrics().catch(err => console.error('Failed to load metrics:', err)),
 				loadOnlineUsers().catch(err => console.error('Failed to load online users:', err)),
 				loadAuditLogs().catch(err => console.error('Failed to load audit logs:', err)),
-				loadUserLatency().catch(err => console.error('Failed to load user latency:', err))
+				loadUserLatency().catch(err => console.error('Failed to load user latency:', err)),
+				loadServers().catch(err => console.error('Failed to load servers:', err))
 			];
 			
 			await Promise.allSettled(promises);
@@ -99,11 +109,43 @@
 	}
 	
 	async function loadAuditLogs() {
-		auditLogs = await apiClient.getAuditLogs(20, 0);
+		auditLogs = await apiClient.getAuditLogs();
 	}
 	
 	async function loadUserLatency() {
 		userLatency = await apiClient.getUserLatency();
+	}
+
+	async function loadServers() {
+		servers = await apiClient.getServers();
+	}
+
+	async function createServer() {
+		try {
+			await apiClient.createServer(newServer);
+			showCreateServerModal = false;
+			newServer = { name: '', description: '' };
+			await loadServers();
+		} catch (err: any) {
+			console.error('Failed to create server:', err);
+		}
+	}
+
+	function editServer(server: any) {
+		// TODO: Implement server editing
+		console.log('Edit server:', server);
+	}
+
+	async function deleteServer(serverId: number) {
+		if (confirm('Are you sure you want to delete this server?')) {
+			try {
+				// TODO: Implement server deletion API
+				console.log('Delete server:', serverId);
+				await loadServers();
+			} catch (err: any) {
+				console.error('Failed to delete server:', err);
+			}
+		}
 	}
 	
 	async function createUser() {
@@ -113,8 +155,14 @@
 			newUser = { username: '', email: '', password: '', role: 'user' };
 			await loadUsers();
 		} catch (err: any) {
-			error = err.message || 'Failed to create user';
+			console.error('Failed to create user:', err);
 		}
+	}
+	
+	function openEditUserModal(user: User) {
+		selectedUser = user;
+		editUser = { username: user.username, email: user.email || '', password: '' };
+		showEditUserModal = true;
 	}
 	
 	async function updateUser() {
@@ -126,18 +174,18 @@
 			selectedUser = null;
 			await loadUsers();
 		} catch (err: any) {
-			error = err.message || 'Failed to update user';
+			console.error('Failed to update user:', err);
 		}
 	}
 	
 	async function deleteUser(user: User) {
-		if (!confirm(`Are you sure you want to delete user "${user.username}"?`)) return;
-		
-		try {
-			await apiClient.deleteUser(user.id);
-			await loadUsers();
-		} catch (err: any) {
-			error = err.message || 'Failed to delete user';
+		if (confirm(`Are you sure you want to delete user ${user.username}?`)) {
+			try {
+				await apiClient.deleteUser(user.id);
+				await loadUsers();
+			} catch (err: any) {
+				console.error('Failed to delete user:', err);
+			}
 		}
 	}
 	
@@ -146,11 +194,11 @@
 			await apiClient.updateUserRole(user.id, role);
 			await loadUsers();
 		} catch (err: any) {
-			error = err.message || 'Failed to update user role';
+			console.error('Failed to update user role:', err);
 		}
 	}
 	
-	function openModerationModal(user: User, action: string) {
+	function openModerationModal(user: any, action: string) {
 		selectedUser = user;
 		moderationAction = action;
 		moderationReason = '';
@@ -158,7 +206,7 @@
 		showModerationModal = true;
 	}
 	
-	async function performModerationAction() {
+	async function performModeration() {
 		if (!selectedUser) return;
 		
 		try {
@@ -169,11 +217,11 @@
 				case 'ban':
 					await apiClient.banUser(selectedUser.id, moderationReason, moderationDuration);
 					break;
-				case 'unban':
-					await apiClient.unbanUser(selectedUser.id);
-					break;
 				case 'mute':
 					await apiClient.muteUser(selectedUser.id, moderationReason, moderationDuration);
+					break;
+				case 'unban':
+					await apiClient.unbanUser(selectedUser.id);
 					break;
 				case 'unmute':
 					await apiClient.unmuteUser(selectedUser.id);
@@ -182,35 +230,28 @@
 			
 			showModerationModal = false;
 			selectedUser = null;
-			await loadUsers();
+			await loadOnlineUsers();
 		} catch (err: any) {
-			error = err.message || 'Failed to perform moderation action';
+			console.error('Failed to perform moderation:', err);
 		}
-	}
-	
-	function openEditUserModal(user: User) {
-		selectedUser = user;
-		editUser = {
-			username: user.username,
-			email: user.email,
-			password: ''
-		};
-		showEditUserModal = true;
 	}
 	
 	function getRoleBadgeColor(role: string) {
 		switch (role) {
-			case 'super_admin': return 'bg-red-500';
-			case 'admin': return 'bg-orange-500';
-			case 'user': return 'bg-blue-500';
-			default: return 'bg-gray-500';
+			case 'super_admin': return 'badge-red';
+			case 'admin': return 'badge-blue';
+			default: return 'badge-gray';
 		}
 	}
 	
 	function getStatusBadgeColor(isOnline: boolean) {
-		return isOnline ? 'bg-green-500' : 'bg-gray-500';
+		return isOnline ? 'badge-green' : 'badge-gray';
 	}
 </script>
+
+<svelte:head>
+	<title>Admin Dashboard - Fethur</title>
+</svelte:head>
 
 <div class="admin-page">
 	<div class="admin-header">
@@ -231,19 +272,19 @@
 
 	<div class="admin-tabs">
 		<button 
-			class="tab-button {activeTab === 'users' ? 'active' : ''}" 
+			class="tab-button {activeTab === 'users' ? 'active' : ''}"
 			on:click={() => activeTab = 'users'}
 		>
 			User Management
 		</button>
 		<button 
-			class="tab-button {activeTab === 'moderation' ? 'active' : ''}" 
+			class="tab-button {activeTab === 'moderation' ? 'active' : ''}"
 			on:click={() => activeTab = 'moderation'}
 		>
 			Moderation
 		</button>
 		<button 
-			class="tab-button {activeTab === 'health' ? 'active' : ''}" 
+			class="tab-button {activeTab === 'health' ? 'active' : ''}"
 			on:click={() => activeTab = 'health'}
 		>
 			System Health
@@ -255,10 +296,16 @@
 			Metrics
 		</button>
 		<button 
-			class="tab-button {activeTab === 'logs' ? 'active' : ''}" 
+			class="tab-button {activeTab === 'logs' ? 'active' : ''}"
 			on:click={() => activeTab = 'logs'}
 		>
 			Audit Logs
+		</button>
+		<button 
+			class="tab-button {activeTab === 'servers' ? 'active' : ''}"
+			on:click={() => activeTab = 'servers'}
+		>
+			Servers
 		</button>
 	</div>
 
@@ -376,22 +423,26 @@
 					<div class="health-grid">
 						<div class="health-card">
 							<h3>Database</h3>
-							<p>Status: <span class="status {systemHealth.database?.status}">{systemHealth.database?.status}</span></p>
-							<p>Type: {systemHealth.database?.type}</p>
+							<p class="status {systemHealth.database?.status === 'healthy' ? 'healthy' : 'unhealthy'}">
+								{systemHealth.database?.status || 'Unknown'}
+							</p>
+							<p>Connection: {systemHealth.database?.connection || 'Unknown'}</p>
 						</div>
 
 						<div class="health-card">
 							<h3>WebSocket</h3>
-							<p>Status: <span class="status {systemHealth.websocket?.status}">{systemHealth.websocket?.status}</span></p>
-							<p>Connections: {systemHealth.websocket?.connections}</p>
+							<p class="status {systemHealth.websocket?.status === 'healthy' ? 'healthy' : 'unhealthy'}">
+								{systemHealth.websocket?.status || 'Unknown'}
+							</p>
+							<p>Connections: {systemHealth.websocket?.connections || 0}</p>
 						</div>
 
 						<div class="health-card">
-							<h3>Statistics</h3>
-							<p>Total Users: {systemHealth.statistics?.total_users}</p>
-							<p>Online Users: {systemHealth.statistics?.online_users}</p>
-							<p>Total Messages: {systemHealth.statistics?.total_messages}</p>
-							<p>Total Servers: {systemHealth.statistics?.total_servers}</p>
+							<h3>API</h3>
+							<p class="status {systemHealth.api?.status === 'healthy' ? 'healthy' : 'unhealthy'}">
+								{systemHealth.api?.status || 'Unknown'}
+							</p>
+							<p>Uptime: {systemHealth.api?.uptime || 'Unknown'}</p>
 						</div>
 					</div>
 				{/if}
@@ -458,6 +509,36 @@
 							{/each}
 						</tbody>
 					</table>
+				</div>
+			</div>
+		{:else if activeTab === 'servers'}
+			<div class="servers-section">
+				<div class="section-header">
+					<h2>Server Management</h2>
+					<button class="btn-primary" on:click={() => showCreateServerModal = true}>
+						Create Server
+					</button>
+				</div>
+
+				<div class="servers-grid">
+					{#each servers as server}
+						<div class="server-card">
+							<h3>{server.name}</h3>
+							<p>{server.description || 'No description'}</p>
+							<div class="server-stats">
+								<span>Channels: {server.channels?.length || 0}</span>
+								<span>Members: {server.members?.length || 0}</span>
+							</div>
+							<div class="server-actions">
+								<button class="btn-secondary" on:click={() => editServer(server)}>
+									Edit
+								</button>
+								<button class="btn-danger" on:click={() => deleteServer(server.id)}>
+									Delete
+								</button>
+							</div>
+						</div>
+					{/each}
 				</div>
 			</div>
 		{/if}
@@ -558,10 +639,37 @@
 					<button type="button" class="btn-secondary" on:click={() => showModerationModal = false}>
 						Cancel
 					</button>
-					<button type="button" class="btn-danger" on:click={performModerationAction}>
+					<button type="button" class="btn-primary" on:click={performModeration}>
 						{moderationAction.charAt(0).toUpperCase() + moderationAction.slice(1)}
 					</button>
 				</div>
+			</div>
+		</div>
+	{/if}
+
+	<!-- Create Server Modal -->
+	{#if showCreateServerModal}
+		<div class="modal-overlay" on:click={() => showCreateServerModal = false}>
+			<div class="modal" on:click|stopPropagation>
+				<h2>Create Server</h2>
+				<form on:submit|preventDefault={createServer}>
+					<div class="form-group">
+						<label for="server-name">Server Name</label>
+						<input type="text" id="server-name" bind:value={newServer.name} required />
+					</div>
+					<div class="form-group">
+						<label for="server-description">Description</label>
+						<textarea id="server-description" bind:value={newServer.description} rows="3"></textarea>
+					</div>
+					<div class="modal-actions">
+						<button type="button" class="btn-secondary" on:click={() => showCreateServerModal = false}>
+							Cancel
+						</button>
+						<button type="submit" class="btn-primary">
+							Create Server
+						</button>
+					</div>
+				</form>
 			</div>
 		</div>
 	{/if}
@@ -572,6 +680,9 @@
 		padding: 2rem;
 		max-width: 1400px;
 		margin: 0 auto;
+		background: var(--color-bg);
+		color: var(--color-text);
+		min-height: 100vh;
 	}
 
 	.admin-header {
@@ -580,18 +691,24 @@
 	}
 
 	.admin-header h1 {
-		font-size: 2.5rem;
+		font-size: var(--font-size-3xl);
 		margin-bottom: 0.5rem;
-		color: #333;
+		color: #ffffff;
+		font-weight: 600;
+	}
+
+	.admin-header p {
+		color: var(--color-text-muted);
+		font-size: var(--font-size-lg);
 	}
 
 	.error-message {
-		background: #fee;
-		color: #c33;
+		background: rgba(239, 68, 68, 0.1);
+		color: var(--color-error);
 		padding: 1rem;
-		border-radius: 8px;
+		border-radius: var(--radius-md);
 		margin-bottom: 1rem;
-		border: 1px solid #fcc;
+		border: 1px solid var(--color-error);
 	}
 
 	.error-content {
@@ -607,25 +724,25 @@
 	}
 
 	.retry-button {
-		background: #dc2626;
+		background: var(--color-error);
 		color: white;
 		border: none;
 		padding: 0.5rem 1rem;
-		border-radius: 4px;
+		border-radius: var(--radius-sm);
 		cursor: pointer;
-		font-size: 0.875rem;
+		font-size: var(--font-size-sm);
 		transition: background-color 0.2s;
 	}
 
 	.retry-button:hover {
-		background: #b91c1c;
+		background: #dc2626;
 	}
 
 	.admin-tabs {
 		display: flex;
 		gap: 0.5rem;
 		margin-bottom: 2rem;
-		border-bottom: 2px solid #e5e7eb;
+		border-bottom: 2px solid var(--color-border);
 	}
 
 	.tab-button {
@@ -635,15 +752,18 @@
 		cursor: pointer;
 		border-bottom: 2px solid transparent;
 		transition: all 0.2s;
+		color: var(--color-text-muted);
+		font-weight: 500;
 	}
 
 	.tab-button:hover {
-		background: #f3f4f6;
+		background: var(--color-surface);
+		color: var(--color-text);
 	}
 
 	.tab-button.active {
-		border-bottom-color: #3b82f6;
-		color: #3b82f6;
+		border-bottom-color: var(--color-accent);
+		color: var(--color-accent);
 	}
 
 	.section-header {
@@ -655,52 +775,71 @@
 
 	.section-header h2 {
 		margin: 0;
-		color: #333;
+		color: #ffffff;
+		font-size: var(--font-size-xl);
+		font-weight: 600;
 	}
 
 	.loading {
 		text-align: center;
 		padding: 2rem;
-		font-size: 1.2rem;
-		color: #666;
+		font-size: var(--font-size-lg);
+		color: var(--color-text-muted);
 	}
 
 	/* Tables */
 	.users-table, .logs-table {
-		overflow-x: auto;
+		background: var(--color-surface);
+		border-radius: var(--radius-md);
+		overflow: hidden;
+		border: 1px solid var(--color-border);
 	}
 
 	table {
 		width: 100%;
 		border-collapse: collapse;
-		background: white;
-		border-radius: 8px;
-		overflow: hidden;
-		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 	}
 
 	th, td {
 		padding: 0.75rem;
 		text-align: left;
-		border-bottom: 1px solid #e5e7eb;
+		border-bottom: 1px solid var(--color-border);
+		color: var(--color-text);
 	}
 
 	th {
-		background: #f9fafb;
+		background: var(--color-primary);
 		font-weight: 600;
-		color: #374151;
+		color: var(--color-text);
 	}
 
-	/* Badges */
 	.badge {
 		padding: 0.25rem 0.5rem;
-		border-radius: 4px;
-		color: white;
-		font-size: 0.75rem;
+		border-radius: var(--radius-sm);
+		font-size: var(--font-size-xs);
 		font-weight: 500;
 	}
 
-	/* Action buttons */
+	.badge-red {
+		background: rgba(239, 68, 68, 0.2);
+		color: #fca5a5;
+	}
+
+	.badge-blue {
+		background: rgba(59, 130, 246, 0.2);
+		color: #93c5fd;
+	}
+
+	.badge-green {
+		background: rgba(16, 185, 129, 0.2);
+		color: #6ee7b7;
+	}
+
+	.badge-gray {
+		background: rgba(107, 114, 128, 0.2);
+		color: #d1d5db;
+	}
+
 	.action-buttons {
 		display: flex;
 		gap: 0.5rem;
@@ -709,73 +848,36 @@
 
 	.btn-small {
 		padding: 0.25rem 0.5rem;
-		font-size: 0.75rem;
 		border: none;
-		border-radius: 4px;
+		border-radius: var(--radius-sm);
 		cursor: pointer;
-		background: #3b82f6;
+		font-size: var(--font-size-xs);
+		background: var(--color-accent);
 		color: white;
+		transition: background-color 0.2s;
 	}
 
 	.btn-small:hover {
-		background: #2563eb;
+		background: var(--color-accent-hover);
 	}
 
 	.btn-small.btn-danger {
-		background: #ef4444;
+		background: var(--color-error);
 	}
 
 	.btn-small.btn-danger:hover {
 		background: #dc2626;
 	}
 
-	/* Buttons */
-	.btn-primary, .btn-secondary, .btn-danger {
-		padding: 0.5rem 1rem;
-		border: none;
-		border-radius: 6px;
-		cursor: pointer;
-		font-weight: 500;
-		transition: all 0.2s;
+	.btn-small.btn-warning {
+		background: var(--color-warning);
 	}
 
-	.btn-primary {
-		background: #3b82f6;
-		color: white;
-	}
-
-	.btn-primary:hover {
-		background: #2563eb;
-	}
-
-	.btn-secondary {
-		background: #6b7280;
-		color: white;
-	}
-
-	.btn-secondary:hover {
-		background: #4b5563;
-	}
-
-	.btn-danger {
-		background: #ef4444;
-		color: white;
-	}
-
-	.btn-danger:hover {
-		background: #dc2626;
-	}
-
-	.btn-warning {
-		background: #f59e0b;
-		color: white;
-	}
-
-	.btn-warning:hover {
+	.btn-small.btn-warning:hover {
 		background: #d97706;
 	}
 
-	/* Moderation section */
+	/* User Grid */
 	.users-grid {
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -783,28 +885,27 @@
 	}
 
 	.user-card {
-		background: white;
+		background: var(--color-surface);
 		padding: 1rem;
-		border-radius: 8px;
-		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-		border: 1px solid #e5e7eb;
+		border-radius: var(--radius-md);
+		border: 1px solid var(--color-border);
 	}
 
 	.user-info h4 {
 		margin: 0 0 0.5rem 0;
-		color: #333;
+		color: var(--color-text);
 	}
 
 	.user-info p {
 		margin: 0.25rem 0;
-		color: #666;
-		font-size: 0.875rem;
+		color: var(--color-text-muted);
+		font-size: var(--font-size-sm);
 	}
 
 	.moderation-actions {
-		margin-top: 1rem;
 		display: flex;
 		gap: 0.5rem;
+		margin-top: 1rem;
 	}
 
 	/* Health and Metrics */
@@ -815,21 +916,20 @@
 	}
 
 	.health-card, .metric-card {
-		background: white;
+		background: var(--color-surface);
 		padding: 1.5rem;
-		border-radius: 8px;
-		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-		border: 1px solid #e5e7eb;
+		border-radius: var(--radius-md);
+		border: 1px solid var(--color-border);
 	}
 
 	.health-card h3, .metric-card h3 {
 		margin: 0 0 1rem 0;
-		color: #333;
+		color: var(--color-text);
 	}
 
 	.health-card p, .metric-card p {
 		margin: 0.5rem 0;
-		color: #666;
+		color: var(--color-text-muted);
 	}
 
 	.status {
@@ -837,11 +937,85 @@
 	}
 
 	.status.healthy {
-		color: #059669;
+		color: var(--color-success);
 	}
 
 	.status.unhealthy {
-		color: #dc2626;
+		color: var(--color-error);
+	}
+
+	/* Servers */
+	.servers-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+		gap: 1rem;
+	}
+
+	.server-card {
+		background: var(--color-surface);
+		padding: 1.5rem;
+		border-radius: var(--radius-md);
+		border: 1px solid var(--color-border);
+	}
+
+	.server-card h3 {
+		margin: 0 0 0.5rem 0;
+		color: var(--color-text);
+	}
+
+	.server-card p {
+		margin: 0 0 1rem 0;
+		color: var(--color-text-muted);
+	}
+
+	.server-stats {
+		display: flex;
+		gap: 1rem;
+		margin-bottom: 1rem;
+		font-size: var(--font-size-sm);
+		color: var(--color-text-muted);
+	}
+
+	.server-actions {
+		display: flex;
+		gap: 0.5rem;
+	}
+
+	/* Buttons */
+	.btn-primary, .btn-secondary, .btn-danger {
+		padding: 0.75rem 1.5rem;
+		border: none;
+		border-radius: var(--radius-md);
+		cursor: pointer;
+		font-weight: 500;
+		transition: all 0.2s;
+	}
+
+	.btn-primary {
+		background: var(--color-accent);
+		color: white;
+	}
+
+	.btn-primary:hover {
+		background: var(--color-accent-hover);
+	}
+
+	.btn-secondary {
+		background: var(--color-primary);
+		color: var(--color-text);
+	}
+
+	.btn-secondary:hover {
+		background: var(--color-surface);
+	}
+
+	.btn-danger {
+		background: var(--color-error);
+		color: white;
+	}
+
+	.btn-danger:hover {
+		background: #dc2626;
 	}
 
 	/* Modals */
@@ -851,7 +1025,7 @@
 		left: 0;
 		right: 0;
 		bottom: 0;
-		background: rgba(0, 0, 0, 0.5);
+		background: rgba(0, 0, 0, 0.8);
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -859,18 +1033,19 @@
 	}
 
 	.modal {
-		background: white;
+		background: var(--color-surface);
 		padding: 2rem;
-		border-radius: 8px;
+		border-radius: var(--radius-lg);
 		max-width: 500px;
 		width: 90%;
 		max-height: 90vh;
 		overflow-y: auto;
+		border: 1px solid var(--color-border);
 	}
 
 	.modal h2 {
 		margin: 0 0 1.5rem 0;
-		color: #333;
+		color: var(--color-text);
 	}
 
 	.form-group {
@@ -881,20 +1056,22 @@
 		display: block;
 		margin-bottom: 0.5rem;
 		font-weight: 500;
-		color: #374151;
+		color: var(--color-text);
 	}
 
-	.form-group input, .form-group select {
+	.form-group input, .form-group select, .form-group textarea {
 		width: 100%;
-		padding: 0.5rem;
-		border: 1px solid #d1d5db;
-		border-radius: 4px;
-		font-size: 1rem;
+		padding: 0.75rem;
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-sm);
+		font-size: var(--font-size-base);
+		background: var(--color-primary);
+		color: var(--color-text);
 	}
 
-	.form-group input:focus, .form-group select:focus {
+	.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
 		outline: none;
-		border-color: #3b82f6;
+		border-color: var(--color-accent);
 		box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 	}
 

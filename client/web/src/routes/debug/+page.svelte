@@ -130,43 +130,72 @@
 		max-width: 800px;
 		margin: 0 auto;
 		padding: 2rem;
-		font-family: monospace;
+		font-family: 'Inter', monospace;
+		background: var(--color-bg);
+		color: var(--color-text);
+		min-height: 100vh;
 	}
 
 	.debug-section {
 		margin-bottom: 2rem;
-		padding: 1rem;
-		border: 1px solid #ccc;
-		border-radius: 4px;
+		padding: 1.5rem;
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-md);
+		background: var(--color-surface);
+		box-shadow: var(--shadow-sm);
+	}
+
+	.debug-section h1 {
+		color: var(--color-text);
+		font-size: var(--font-size-2xl);
+		margin-bottom: 1.5rem;
 	}
 
 	.debug-section h2 {
 		margin-top: 0;
-		color: #333;
+		color: var(--color-text);
+		font-size: var(--font-size-lg);
+		margin-bottom: 1rem;
+	}
+
+	.debug-section p {
+		color: var(--color-text);
+		margin-bottom: 0.5rem;
 	}
 
 	pre {
-		background: #f5f5f5;
+		background: var(--color-primary);
+		color: var(--color-text);
 		padding: 1rem;
-		border-radius: 4px;
+		border-radius: var(--radius-sm);
 		overflow-x: auto;
+		border: 1px solid var(--color-border);
+		font-size: var(--font-size-sm);
+		line-height: var(--line-height-relaxed);
 	}
 
 	.error {
-		border-color: #ff6b6b;
-		background: #fff5f5;
+		border-color: var(--color-error);
+		background: rgba(239, 68, 68, 0.1);
 	}
 
 	button {
-		background: #007bff;
+		background: var(--color-accent);
 		color: white;
 		border: none;
-		padding: 0.5rem 1rem;
-		border-radius: 4px;
+		padding: 0.75rem 1.5rem;
+		border-radius: var(--radius-md);
 		cursor: pointer;
+		font-family: var(--font-family);
+		font-weight: 500;
+		margin-right: 0.5rem;
+		margin-bottom: 0.5rem;
+		transition: all 0.2s ease;
 	}
 
 	button:hover {
-		background: #0056b3;
+		background: var(--color-accent-hover);
+		transform: translateY(-1px);
+		box-shadow: var(--shadow-md);
 	}
 </style> 

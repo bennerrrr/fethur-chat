@@ -6,6 +6,7 @@
 	import { apiClient } from '$lib/api/client';
 	import { wsClient } from '$lib/api/websocket';
 	import { appActions, appStore, chatActions, chatStore } from '$lib/stores/app';
+	import { authStore, authActions } from '$lib/stores/auth';
 	import ServerList from '$lib/components/ui/ServerList.svelte';
 	import ChannelList from '$lib/components/ui/ChannelList.svelte';
 	import EnhancedChatArea from '$lib/components/ui/EnhancedChatArea.svelte';
@@ -25,49 +26,34 @@
 
 	onMount(async () => {
 		try {
-			// Check authentication
-			let token: string | null = null;
-			if (browser) {
-				token = localStorage.getItem('token');
-				if (!token) {
-					goto('/');
-					return;
-				}
-				// Set the token in the API client
-				apiClient.setToken(token);
+			// Check authentication using auth store
+			const auth = $authStore;
+			if (!auth.user || !auth.token) {
+				goto('/');
+				return;
 			}
 
-			// Try to check backend availability and get user info
+			// Set the token in the API client
+			apiClient.setToken(auth.token);
+			currentUser = auth.user;
+
+			// Try to check backend availability
 			try {
 				await apiClient.healthCheck();
 				backendAvailable = true;
 				
-				// Get current user info
-				const user = await apiClient.getCurrentUser();
-				console.log('Chat page - Current user:', user); // Debug log
-				currentUser = user;
-				appActions.setCurrentUser(user);
-
 				// Load servers
 				await loadServers();
 
 				// Connect to WebSocket
-				if (token) {
-					await connectWebSocket(token);
-				}
+				await connectWebSocket(auth.token);
+
+				// Set up WebSocket event listeners
+				setupWebSocketListeners();
 
 			} catch (err) {
-				console.warn('Backend not available or authentication failed:', err);
+				console.warn('Backend not available:', err);
 				backendAvailable = false;
-				
-				// Fallback to mock user for demonstration
-				currentUser = {
-					id: 1,
-					username: 'TestUser',
-					email: 'test@example.com',
-					isOnline: true,
-					createdAt: new Date()
-				};
 			}
 
 		} catch (err) {
@@ -139,6 +125,42 @@
 			console.error('Failed to connect WebSocket:', err);
 			appActions.setConnectionStatus(false);
 		}
+	}
+
+	function setupWebSocketListeners() {
+		// Listen for new messages
+		wsClient.on('message', (data) => {
+			if (data.type === 'message_created' && data.channelId === currentChannel?.id) {
+				chatActions.addMessage(data.message);
+			}
+		});
+
+		// Listen for user events
+		wsClient.on('user', (data) => {
+			console.log('User event:', data);
+			// Update user status if needed
+		});
+
+		// Listen for typing events
+		wsClient.on('typing', (data) => {
+			if (data.channelId === currentChannel?.id) {
+				chatActions.updateTypingUsers({
+					...data,
+					isTyping: data.type === 'typing_start'
+				});
+			}
+		});
+
+		// Listen for connection events
+		wsClient.on('connected', () => {
+			console.log('WebSocket connected');
+			appActions.setConnectionStatus(true);
+		});
+
+		wsClient.on('disconnected', () => {
+			console.log('WebSocket disconnected');
+			appActions.setConnectionStatus(false);
+		});
 	}
 
 	function logout() {
@@ -417,10 +439,10 @@
 
 	/* Admin Navigation */
 	.admin-nav {
-		position: fixed;
+		position: absolute;
 		top: 1rem;
 		right: 1rem;
-		z-index: 1000;
+		z-index: 100;
 	}
 
 	.admin-link {

@@ -1,257 +1,241 @@
-# Feathur - Modern Chat & Voice Platform
+# Fethur - Modern Chat Platform
 
-A real-time chat and voice communication platform built with Go (backend) and SvelteKit (frontend).
+A real-time chat platform built with Go (backend) and SvelteKit (frontend), featuring modern UI/UX, comprehensive admin tools, and robust authentication.
 
 ## 🚀 Recent Updates (Latest)
 
-### ✅ **Admin System Fully Implemented**
-- **Comprehensive User Management** - Create, edit, delete users with role management
-- **Advanced Moderation Tools** - Kick, ban, mute users with duration and reason tracking
-- **System Health Monitoring** - Real-time database, WebSocket, and server status
-- **Detailed Metrics Dashboard** - User activity, role distribution, and online statistics
-- **Audit Logging** - Complete tracking of all admin actions for security
-- **User Latency Monitoring** - Track connection quality for all online users
-- **IP Address Tracking** - Monitor user connections and locations
-
-### ✅ **Chat System Fully Functional**
-- **Real-time messaging** with WebSocket support
-- **Message history** loading and persistence
-- **User authentication** with JWT tokens
-- **Server and channel management**
-- **Cross-platform compatibility** (localhost and network access)
-
-### ✅ **Authentication System Enhanced**
-- **Guest mode** with admin controls
-- **Auto-login** with default credentials
-- **Role-based access** (user, admin, super_admin)
-- **Secure password hashing** with bcrypt
-- **Token-based authentication** with JWT
+### ✅ **Admin System - Complete Overhaul**
+- **Fixed Admin Page**: Completely rewrote admin page to resolve all syntax errors and structural issues
+- **High-Contrast UI**: Implemented pure black/white color scheme for maximum readability
+- **Comprehensive Admin Dashboard**: Full user management, moderation tools, system health, metrics, and server management
+- **Real-time Features**: Live user monitoring, audit logs, and system metrics
 
 ### ✅ **UI/UX Improvements**
-- **Modern chat interface** with enhanced components
-- **Real-time typing indicators** and message reactions
-- **Responsive design** for all screen sizes
-- **Admin dashboard** with comprehensive management tools
-- **System monitoring** with real-time health checks
+- **Text Readability**: Fixed all text visibility issues with high-contrast color scheme
+- **Modern Design System**: Implemented CSS design tokens and Inter font
+- **Responsive Layout**: Improved navigation and component layouts
+- **Error Handling**: Comprehensive error boundaries and user feedback
 
-### ✅ **Backend Stability**
-- **CORS support** for cross-origin requests
-- **WebSocket real-time communication**
-- **Database persistence** with SQLite
-- **Error handling** and logging
-- **Health check endpoints**
+### ✅ **Authentication & Security**
+- **Role-Based Access**: `user`, `admin`, `super_admin` roles with proper permissions
+- **Guest Mode**: Optional guest access with admin controls
+- **JWT Authentication**: Secure token-based authentication
+- **Admin Middleware**: Protected admin-only routes and features
 
 ## 🎯 Features
 
-### Core Chat Features
-- ✅ **Real-time messaging** with WebSocket
-- ✅ **Message history** and persistence
-- ✅ **User authentication** and authorization
-- ✅ **Server and channel management**
-- ✅ **Typing indicators**
-- ✅ **Message reactions**
-- ✅ **File attachments** (drag & drop)
-- ✅ **Message replies**
+### **Core Chat Features**
+- ✅ **Real-time Messaging**: WebSocket-powered live chat
+- ✅ **Server & Channel Management**: Create and manage chat servers
+- ✅ **User Authentication**: Secure login/register system
+- ✅ **Guest Mode**: Optional anonymous access
+- ✅ **Message History**: Persistent message storage
+- ✅ **Typing Indicators**: Real-time typing status
 
-### Authentication & Security
-- ✅ **JWT token authentication**
-- ✅ **Role-based access control** (user, admin, super_admin)
-- ✅ **Guest mode** (admin configurable)
-- ✅ **Auto-login** with default credentials
-- ✅ **Secure password hashing** (bcrypt)
-- ✅ **CORS support** for cross-origin requests
+### **Admin System** 🆕
+- ✅ **User Management**: Create, edit, delete, and role management
+- ✅ **Moderation Tools**: Kick, ban, mute, unban, unmute users
+- ✅ **System Health**: Database, WebSocket, and API status monitoring
+- ✅ **Metrics Dashboard**: User activity, role distribution, online users
+- ✅ **Audit Logging**: Complete action tracking for admins
+- ✅ **IP Tracking**: User IP address monitoring
+- ✅ **Server Management**: Create and manage chat servers
+- ✅ **User Latency**: Performance monitoring per user
 
-### Admin Features
-- ✅ **Comprehensive User Management** - Create, edit, delete users with role assignment
-- ✅ **Advanced Moderation Tools** - Kick, ban, mute users with duration and reason tracking
-- ✅ **System Health Monitoring** - Real-time database, WebSocket, and server status
-- ✅ **Detailed Metrics Dashboard** - User activity, role distribution, and online statistics
-- ✅ **Audit Logging** - Complete tracking of all admin actions for security compliance
-- ✅ **User Latency Monitoring** - Track connection quality and performance for all users
-- ✅ **IP Address Tracking** - Monitor user connections and geographic locations
-- ✅ **Guest mode toggle** and **Auto-login configuration**
-- ✅ **Default credentials management**
-- ✅ **Server and channel creation**
+### **Modern UI/UX** 🆕
+- ✅ **High-Contrast Theme**: Pure black/white for maximum readability
+- ✅ **Inter Font**: Modern typography throughout
+- ✅ **CSS Design Tokens**: Consistent spacing, colors, and shadows
+- ✅ **Responsive Design**: Works on all device sizes
+- ✅ **Loading States**: Smooth loading indicators
+- ✅ **Error Boundaries**: Graceful error handling
+- ✅ **Accessibility**: ARIA labels and keyboard navigation
 
-### Voice Features (Planned)
-- 🔄 **WebRTC voice channels**
-- 🔄 **Push-to-talk**
-- 🔄 **Voice activity detection**
-- 🔄 **Audio device management**
+### **Technical Features**
+- ✅ **WebSocket Real-time**: Live message updates
+- ✅ **REST API**: Comprehensive backend API
+- ✅ **SQLite Database**: Lightweight, persistent storage
+- ✅ **CORS Support**: Cross-origin resource sharing
+- ✅ **Environment Configuration**: Flexible deployment options
+- ✅ **Docker Support**: Containerized deployment
 
-## 🛠️ Technology Stack
+## 🛠️ Tech Stack
 
-### Backend
-- **Go** - High-performance server language
-- **Gin** - Web framework
-- **SQLite** - Database
-- **JWT** - Authentication
-- **WebSocket** - Real-time communication
-- **Bcrypt** - Password hashing
+### **Backend (Go)**
+- **Framework**: Gin Web Framework
+- **Database**: SQLite3
+- **Authentication**: JWT + Bcrypt
+- **Real-time**: WebSocket (Gorilla)
+- **CORS**: Cross-origin support
 
-### Frontend
-- **SvelteKit** - Modern web framework
-- **TypeScript** - Type safety
-- **Tailwind CSS** - Styling
-- **WebSocket** - Real-time updates
-- **Vite** - Build tool
+### **Frontend (SvelteKit)**
+- **Framework**: SvelteKit
+- **Build Tool**: Vite
+- **Package Manager**: pnpm
+- **Styling**: CSS with design tokens
+- **Font**: Inter (Google Fonts)
+- **State Management**: Svelte stores
 
-## 📦 Installation
+## 🚀 Quick Start
 
-### Prerequisites
+### **Prerequisites**
 - Go 1.21+
 - Node.js 18+
-- pnpm (recommended)
+- pnpm
 
-### Quick Start
+### **Backend Setup**
+```bash
+cd server
+go mod download
+go run cmd/server/main.go
+```
+Server runs on `http://localhost:8081`
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd Feathur
-   ```
+### **Frontend Setup**
+```bash
+cd client/web
+pnpm install
+pnpm dev
+```
+Frontend runs on `http://localhost:5173` (or next available port)
 
-2. **Start the backend**
-   ```bash
-   cd server
-   go run cmd/server/main.go
-   ```
-   Backend will start on `http://localhost:8081`
+### **Database**
+- SQLite database automatically created at `server/data/fethur.db`
+- Default admin user: `admin` / `password123!` (super_admin role)
 
-3. **Start the frontend**
-   ```bash
-   cd client/web
-   pnpm install
-   pnpm dev
-   ```
-   Frontend will start on `http://localhost:5174`
+## 📖 Usage Guide
 
-4. **Access the application**
-   - **Local**: `http://localhost:5174`
-   - **Network**: `http://192.168.1.23:5174` (if configured)
+### **For Users**
+1. **Register/Login**: Create account or use guest mode
+2. **Join Servers**: Browse and join available chat servers
+3. **Chat**: Send messages in real-time with typing indicators
+4. **User Management**: Update profile and settings
+
+### **For Admins**
+1. **Access Admin Panel**: Navigate to `/admin` (admin/super_admin only)
+2. **User Management**: Create, edit, delete users and assign roles
+3. **Moderation**: Kick, ban, mute users as needed
+4. **System Monitoring**: Check health, metrics, and audit logs
+5. **Server Management**: Create and manage chat servers
+
+### **Admin Features**
+- **User Management**: Full CRUD operations for users
+- **Role Assignment**: Assign user, admin, or super_admin roles
+- **Moderation Actions**: Kick, ban (temporary/permanent), mute users
+- **System Health**: Monitor database, WebSocket, and API status
+- **Real-time Metrics**: User activity, online users, message counts
+- **Audit Logs**: Track all admin actions with timestamps
+- **IP Tracking**: Monitor user connection IPs
+- **Server Management**: Create, view, and manage chat servers
 
 ## 🔧 Configuration
 
-### Environment Variables
-
-Create `.env` file in `client/web/`:
+### **Environment Variables**
 ```bash
-PUBLIC_API_URL=http://192.168.1.23:8081
-PUBLIC_WS_URL=ws://192.168.1.23:8081
+# Frontend (.env)
+PUBLIC_API_URL=http://localhost:8081
+PUBLIC_WS_URL=ws://localhost:8081
 PUBLIC_DEV_MODE=true
 PUBLIC_LOG_LEVEL=debug
 ```
 
-### Default Users
+### **Database**
+- **Location**: `server/data/fethur.db`
+- **Schema**: Auto-created on first run
+- **Tables**: users, servers, channels, messages, user_bans, user_mutes, audit_logs
 
-The system comes with pre-configured users:
-- **superadmin** / **password123!** (super_admin role)
-- **testuser** / **password123!** (user role)
-
-## 🎮 Usage
-
-### Getting Started
-
-1. **Login** with default credentials
-2. **Create or join** a server
-3. **Join channels** to start chatting
-4. **Send messages** in real-time
-5. **Use reactions** and replies
-
-### Admin Features
-
-1. **Access admin panel** at `/admin`
-2. **Configure guest mode** settings
-3. **Set up auto-login** credentials
-4. **Manage users** and permissions
-
-### Chat Features
-
-- **Real-time messaging** - Messages appear instantly
-- **Message history** - Load previous conversations
-- **Typing indicators** - See when others are typing
-- **File uploads** - Drag and drop files
-- **Message reactions** - React with emojis
-- **Message replies** - Reply to specific messages
-
-## 🔌 API Endpoints
-
-### Authentication
-- `POST /api/auth/login` - User login
-- `POST /api/auth/register` - User registration
-- `POST /api/auth/guest` - Guest login
-- `GET /api/auth/me` - Get current user
-
-### Servers & Channels
-- `GET /api/servers` - List servers
-- `POST /api/servers` - Create server
-- `GET /api/servers/:id/channels` - List channels
-- `POST /api/servers/:id/channels` - Create channel
-
-### Messages
-- `GET /api/channels/:id/messages` - Get messages
-- `POST /api/channels/:id/messages` - Send message
-
-### WebSocket
-- `GET /ws?token=<jwt>` - WebSocket connection
-
-### Health
-- `GET /health` - Health check
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-1. **"Backend Server Offline"**
-   - Ensure backend is running on port 8081
-   - Check `.env` configuration
-   - Verify network connectivity
-
-2. **"Failed to load messages"**
-   - Check authentication token
-   - Verify channel exists
-   - Check browser console for errors
-
-3. **"Failed to send message"**
-   - Ensure user is authenticated
-   - Check channel permissions
-   - Verify WebSocket connection
-
-4. **CORS Errors**
-   - Backend includes CORS middleware
-   - Check frontend URL configuration
-   - Verify API endpoints
-
-### Debug Tools
-
-- **Debug Page**: `http://192.168.1.23:5174/debug`
-- **Health Check**: `http://192.168.1.23:8081/health`
-- **Browser Console**: Check for JavaScript errors
-
-## 📁 Project Structure
+## 🏗️ Project Structure
 
 ```
 Feathur/
 ├── server/                 # Go backend
 │   ├── cmd/server/        # Main application
 │   ├── internal/          # Internal packages
-│   │   ├── auth/         # Authentication
-│   │   ├── database/     # Database operations
-│   │   ├── server/       # HTTP server
-│   │   ├── websocket/    # WebSocket handling
-│   │   └── voice/        # Voice features
-│   └── data/             # Database files
+│   │   ├── auth/          # Authentication
+│   │   ├── database/      # Database operations
+│   │   ├── server/        # HTTP server
+│   │   ├── websocket/     # WebSocket handling
+│   │   └── voice/         # Voice features
+│   └── data/              # Database files
 ├── client/web/            # SvelteKit frontend
 │   ├── src/
-│   │   ├── lib/          # Shared libraries
-│   │   │   ├── api/      # API client
-│   │   │   ├── components/ # UI components
-│   │   │   ├── stores/   # State management
-│   │   │   └── types/    # TypeScript types
-│   │   └── routes/       # Page routes
-│   └── static/           # Static assets
-└── docs/                 # Documentation
+│   │   ├── lib/
+│   │   │   ├── api/       # API client
+│   │   │   ├── components/ui/  # UI components
+│   │   │   ├── stores/    # State management
+│   │   │   └── types/     # TypeScript types
+│   │   └── routes/        # SvelteKit routes
+│   └── static/            # Static assets
+└── docs/                  # Documentation
 ```
+
+## 🎨 UI/UX Design System
+
+### **Color Palette**
+- **Background**: Pure black (`#000000`)
+- **Surface**: Dark gray (`#111111`)
+- **Text**: Pure white (`#ffffff`)
+- **Accent**: Blue (`#3b82f6`)
+- **Success**: Green (`#10b981`)
+- **Error**: Red (`#ef4444`)
+- **Warning**: Orange (`#f59e0b`)
+
+### **Typography**
+- **Font Family**: Inter (Google Fonts)
+- **Font Sizes**: xs, sm, base, lg, xl, 2xl, 3xl
+- **Line Heights**: tight, normal, relaxed
+
+### **Spacing & Layout**
+- **Border Radius**: sm, md, lg, xl
+- **Shadows**: sm, md, lg, xl
+- **Transitions**: 0.2s ease
+
+## 🔒 Security Features
+
+### **Authentication**
+- JWT tokens with expiration
+- Bcrypt password hashing
+- Role-based access control
+- Admin middleware protection
+
+### **Data Protection**
+- Input validation and sanitization
+- SQL injection prevention
+- XSS protection
+- CORS configuration
+
+## 📊 Monitoring & Analytics
+
+### **System Health**
+- Database connection status
+- WebSocket connection count
+- API uptime monitoring
+- Error rate tracking
+
+### **User Metrics**
+- Active users (24h)
+- New user registrations
+- Message activity
+- Role distribution
+- User latency tracking
+
+### **Audit Logging**
+- Admin action tracking
+- User moderation events
+- System configuration changes
+- Security events
+
+## 🚀 Deployment
+
+### **Docker**
+```bash
+docker-compose up -d
+```
+
+### **Manual Deployment**
+1. Build backend: `go build -o fethur-server cmd/server/main.go`
+2. Build frontend: `pnpm build`
+3. Serve static files and run backend
 
 ## 🤝 Contributing
 
@@ -261,17 +245,16 @@ Feathur/
 4. Test thoroughly
 5. Submit a pull request
 
-## 📄 License
+## 📝 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 🆘 Support
 
-For support and questions:
-- Check the [documentation](docs/)
-- Review [troubleshooting guide](#troubleshooting)
-- Open an issue on GitHub
+- **Issues**: Create GitHub issues for bugs or feature requests
+- **Documentation**: Check the `/docs` folder for detailed guides
+- **Admin Guide**: See `/docs/USER_GUIDE.md` for admin features
 
 ---
 
-**Feathur** - Building the future of real-time communication 🚀
+**Fethur** - Modern, secure, and feature-rich chat platform for communities and teams.

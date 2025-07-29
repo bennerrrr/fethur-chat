@@ -6,12 +6,37 @@
 	export let server: Server | null = null;
 	export let currentUser: User | null = null;
 
-	// Mock data for now - this would come from the server
-	let onlineUsers: User[] = [
-		{ id: 1, username: 'alice', email: 'alice@example.com', isOnline: true, createdAt: new Date() },
-		{ id: 2, username: 'bob', email: 'bob@example.com', isOnline: true, createdAt: new Date() },
-		{ id: 3, username: 'charlie', email: 'charlie@example.com', isOnline: false, createdAt: new Date() }
-	];
+	import { onMount } from 'svelte';
+	import { apiClient } from '$lib/api/client';
+
+	let onlineUsers: User[] = [];
+	let isLoading = true;
+	let error = '';
+
+	onMount(async () => {
+		if (server) {
+			await loadServerUsers();
+		}
+	});
+
+	async function loadServerUsers() {
+		try {
+			isLoading = true;
+			// Load users for the current server
+			const users = await apiClient.getUsers();
+			// Filter to show only users who are members of this server
+			// For now, show all users - this could be enhanced with server membership
+			onlineUsers = users.map(user => ({
+				...user,
+				isOnline: user.isOnline || false
+			}));
+		} catch (err) {
+			console.error('Failed to load server users:', err);
+			error = 'Failed to load users';
+		} finally {
+			isLoading = false;
+		}
+	}
 
 	$: onlineCount = onlineUsers.filter(u => u.isOnline).length;
 	$: totalCount = onlineUsers.length;
@@ -29,40 +54,55 @@
 	</div>
 
 	<div class="user-sections">
-		<!-- Online Users -->
-		{#if onlineUsers.filter(u => u.isOnline).length > 0}
-			<div class="user-section">
-				<div class="section-header">
-					<Circle size={8} class="status-indicator online" />
-					<span>Online — {onlineCount}</span>
-				</div>
-				<div class="user-items">
-					{#each onlineUsers.filter(u => u.isOnline) as user (user.id)}
-						<div class="user-item">
-							<UserAvatar {user} size="sm" />
-							<span class="user-name">{user.username}</span>
-						</div>
-					{/each}
-				</div>
+		{#if isLoading}
+			<div class="loading-state">
+				<p>Loading users...</p>
 			</div>
-		{/if}
+		{:else if error}
+			<div class="error-state">
+				<p>{error}</p>
+				<button on:click={loadServerUsers}>Retry</button>
+			</div>
+		{:else if onlineUsers.length === 0}
+			<div class="empty-state">
+				<p>No users found</p>
+			</div>
+		{:else}
+			<!-- Online Users -->
+			{#if onlineUsers.filter(u => u.isOnline).length > 0}
+				<div class="user-section">
+					<div class="section-header">
+						<Circle size={8} class="status-indicator online" />
+						<span>Online — {onlineCount}</span>
+					</div>
+					<div class="user-items">
+						{#each onlineUsers.filter(u => u.isOnline) as user (user.id)}
+							<div class="user-item">
+								<UserAvatar {user} size="sm" />
+								<span class="user-name">{user.username}</span>
+							</div>
+						{/each}
+					</div>
+				</div>
+			{/if}
 
-		<!-- Offline Users -->
-		{#if onlineUsers.filter(u => !u.isOnline).length > 0}
-			<div class="user-section">
-				<div class="section-header">
-					<Circle size={8} class="status-indicator offline" />
-					<span>Offline — {totalCount - onlineCount}</span>
+			<!-- Offline Users -->
+			{#if onlineUsers.filter(u => !u.isOnline).length > 0}
+				<div class="user-section">
+					<div class="section-header">
+						<Circle size={8} class="status-indicator offline" />
+						<span>Offline — {totalCount - onlineCount}</span>
+					</div>
+					<div class="user-items">
+						{#each onlineUsers.filter(u => !u.isOnline) as user (user.id)}
+							<div class="user-item offline">
+								<UserAvatar {user} size="sm" />
+								<span class="user-name">{user.username}</span>
+							</div>
+						{/each}
+					</div>
 				</div>
-				<div class="user-items">
-					{#each onlineUsers.filter(u => !u.isOnline) as user (user.id)}
-						<div class="user-item offline">
-							<UserAvatar {user} size="sm" />
-							<span class="user-name">{user.username}</span>
-						</div>
-					{/each}
-				</div>
-			</div>
+			{/if}
 		{/if}
 	</div>
 </div>
@@ -98,6 +138,29 @@
 		font-size: 12px;
 		color: var(--color-text);
 		opacity: 0.7;
+	}
+
+	.loading-state,
+	.error-state,
+	.empty-state {
+		padding: 1rem;
+		text-align: center;
+		color: var(--color-text-muted);
+	}
+
+	.error-state button {
+		background: var(--color-accent);
+		color: white;
+		border: none;
+		padding: 0.5rem 1rem;
+		border-radius: var(--radius-sm);
+		cursor: pointer;
+		margin-top: 0.5rem;
+		font-size: var(--font-size-sm);
+	}
+
+	.error-state button:hover {
+		background: var(--color-accent-hover);
 	}
 
 	.user-sections {

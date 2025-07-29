@@ -41,7 +41,7 @@ export const authActions = {
 		authStore.update(state => ({ ...state, isLoading: true }));
 
 		try {
-			const token = getStorageItem<string>('auth_token');
+			const token = localStorage.getItem('token');
 			
 			if (token) {
 				// Verify token is still valid by fetching current user
@@ -159,14 +159,15 @@ export const authActions = {
 		} catch (error) {
 			console.warn('Logout API call failed:', error);
 		} finally {
-			// Clear local state regardless of API call result
-			authStore.update(state => ({
-				...state,
-				user: null,
-				token: null,
-				isLoading: false,
-				error: null
-			}));
+					// Clear local state regardless of API call result
+		localStorage.removeItem('token');
+		authStore.update(state => ({
+			...state,
+			user: null,
+			token: null,
+			isLoading: false,
+			error: null
+		}));
 		}
 	},
 

@@ -1,10 +1,14 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
+	import { browser } from '$app/environment';
+	import { apiClient } from '$lib/api/client';
 
 	let isFirstTime = false;
 	let currentStep = 1;
 	let totalSteps = 5;
 	let loading = true;
+	let authChecking = true;
 
 	// Configuration data
 	let config = {
@@ -41,7 +45,29 @@
 	let success = '';
 
 	onMount(async () => {
+		if (!browser) return;
+		
 		try {
+			// First, check if user is already authenticated
+			const token = localStorage.getItem('token');
+			if (token) {
+				apiClient.setToken(token);
+				try {
+					const user = await apiClient.getCurrentUser();
+					console.log('User already authenticated:', user);
+					// Redirect to appropriate page based on user role
+					if (user.role === 'admin' || user.role === 'super_admin') {
+						goto('/admin');
+					} else {
+						goto('/chat');
+					}
+					return;
+				} catch (err) {
+					console.log('Token invalid, clearing and continuing...');
+					localStorage.removeItem('token');
+				}
+			}
+
 			// Check if this is first time setup
 			const response = await fetch('/api/setup/status');
 			const data = await response.json();
@@ -51,6 +77,7 @@
 			isFirstTime = true; // Default to setup mode if error
 		} finally {
 			loading = false;
+			authChecking = false;
 		}
 	});
 
@@ -103,7 +130,19 @@
 			if (response.ok) {
 				const data = await response.json();
 				localStorage.setItem('token', data.token);
-				window.location.href = '/dashboard';
+				apiClient.setToken(data.token);
+				
+				// Get user info to determine redirect
+				try {
+					const user = await apiClient.getCurrentUser();
+					if (user.role === 'admin' || user.role === 'super_admin') {
+						goto('/admin');
+					} else {
+						goto('/chat');
+					}
+				} catch (err) {
+					goto('/chat'); // Fallback
+				}
 			} else {
 				const data = await response.json();
 				error = data.error || 'Login failed';
@@ -126,7 +165,8 @@
 			if (response.ok) {
 				const data = await response.json();
 				localStorage.setItem('token', data.token);
-				window.location.href = '/chat';
+				apiClient.setToken(data.token);
+				goto('/chat');
 			} else {
 				const data = await response.json();
 				error = data.error || 'Guest login failed';
@@ -155,10 +195,16 @@
 	}
 </script>
 
-{#if loading}
+{#if loading || authChecking}
 	<div class="glass-card">
 		<div style="text-align: center; padding: 2rem;">
-			<div style="font-size: 1.2rem; margin-bottom: 1rem;">Loading...</div>
+			<div style="font-size: 1.2rem; margin-bottom: 1rem;">
+				{#if authChecking}
+					Checking authentication...
+				{:else}
+					Loading...
+				{/if}
+			</div>
 			<div style="width: 40px; height: 40px; border: 3px solid var(--color-glass-border); border-top: 3px solid var(--color-accent); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto;"></div>
 		</div>
 	</div>
