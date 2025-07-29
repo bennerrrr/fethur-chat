@@ -4,6 +4,14 @@ A real-time chat platform built with Go (backend) and SvelteKit (frontend), feat
 
 ## 🚀 Recent Updates (Latest)
 
+### ✅ **Voice Chat Implementation** 🎤
+- **Complete WebRTC Voice System**: Full voice chat with WebRTC peer connections
+- **HTTPS Support**: Self-signed certificates for local development
+- **Voice Controls UI**: Mute, deafen, settings, and connection status
+- **Voice Test Page**: Dedicated testing interface for troubleshooting
+- **Enhanced Error Handling**: Proper MediaDevices API error handling
+- **Voice Statistics**: Admin panel integration for voice monitoring
+
 ### ✅ **Admin System - Complete Overhaul**
 - **Fixed Admin Page**: Completely rewrote admin page to resolve all syntax errors and structural issues
 - **High-Contrast UI**: Implemented pure black/white color scheme for maximum readability
@@ -26,6 +34,7 @@ A real-time chat platform built with Go (backend) and SvelteKit (frontend), feat
 
 ### **Core Chat Features**
 - ✅ **Real-time Messaging**: WebSocket-powered live chat
+- ✅ **Voice Chat**: WebRTC-based voice communication 🎤
 - ✅ **Server & Channel Management**: Create and manage chat servers
 - ✅ **User Authentication**: Secure login/register system
 - ✅ **Guest Mode**: Optional anonymous access
@@ -53,6 +62,8 @@ A real-time chat platform built with Go (backend) and SvelteKit (frontend), feat
 
 ### **Technical Features**
 - ✅ **WebSocket Real-time**: Live message updates
+- ✅ **WebRTC Voice**: Peer-to-peer voice communication
+- ✅ **HTTPS Development**: Self-signed certificates for local testing
 - ✅ **REST API**: Comprehensive backend API
 - ✅ **SQLite Database**: Lightweight, persistent storage
 - ✅ **CORS Support**: Cross-origin resource sharing
@@ -98,6 +109,24 @@ pnpm install
 pnpm dev
 ```
 Frontend runs on `http://localhost:5173` (or next available port)
+
+### **HTTPS Setup for Voice Chat** 🎤
+For voice chat functionality, HTTPS is required. Use the provided script:
+```bash
+./start-https.sh
+```
+This will start both backend and frontend with HTTPS support.
+
+**Manual Setup:**
+1. Backend: `cd server && go run cmd/server/main.go`
+2. Frontend: `cd client/web && pnpm dev` (HTTPS enabled automatically)
+
+**Access URLs:**
+- Frontend (HTTPS): `https://localhost:5173`
+- Voice Test: `https://localhost:5173/voice-test`
+- Backend (HTTP): `http://localhost:8081`
+
+See `HTTPS_SETUP.md` for detailed instructions.
 
 ### **Database**
 - SQLite database automatically created at `server/data/fethur.db`
