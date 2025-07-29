@@ -140,6 +140,7 @@ class ApiClient {
 				id: response.data.id,
 				username: response.data.username,
 				email: response.data.email,
+				role: response.data.role, // Include the role field
 				isOnline: true,
 				createdAt: new Date(response.data.created_at || new Date())
 			};

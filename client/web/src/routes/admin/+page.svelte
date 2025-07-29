@@ -44,13 +44,16 @@
 		try {
 			// Check if user is admin
 			currentUser = await apiClient.getCurrentUser();
-			if (currentUser.role !== 'admin' && currentUser.role !== 'super_admin') {
+			console.log('Current user:', currentUser); // Debug log
+			
+			if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'super_admin')) {
 				error = 'Access denied. Admin privileges required.';
 				return;
 			}
 			
 			await loadData();
 		} catch (err: any) {
+			console.error('Admin page error:', err); // Debug log
 			error = err.message || 'Failed to load admin data';
 		}
 	});
@@ -60,15 +63,19 @@
 		error = '';
 		
 		try {
-			await Promise.all([
-				loadUsers(),
-				loadSystemHealth(),
-				loadMetrics(),
-				loadOnlineUsers(),
-				loadAuditLogs(),
-				loadUserLatency()
-			]);
+			// Load data with individual error handling
+			const promises = [
+				loadUsers().catch(err => console.error('Failed to load users:', err)),
+				loadSystemHealth().catch(err => console.error('Failed to load health:', err)),
+				loadMetrics().catch(err => console.error('Failed to load metrics:', err)),
+				loadOnlineUsers().catch(err => console.error('Failed to load online users:', err)),
+				loadAuditLogs().catch(err => console.error('Failed to load audit logs:', err)),
+				loadUserLatency().catch(err => console.error('Failed to load user latency:', err))
+			];
+			
+			await Promise.allSettled(promises);
 		} catch (err: any) {
+			console.error('Load data error:', err);
 			error = err.message || 'Failed to load data';
 		} finally {
 			isLoading = false;
@@ -213,7 +220,12 @@
 
 	{#if error}
 		<div class="error-message">
-			{error}
+			<div class="error-content">
+				<p>{error}</p>
+				<button class="retry-button" on:click={loadData}>
+					🔄 Retry
+				</button>
+			</div>
 		</div>
 	{/if}
 
@@ -580,6 +592,33 @@
 		border-radius: 8px;
 		margin-bottom: 1rem;
 		border: 1px solid #fcc;
+	}
+
+	.error-content {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+	}
+
+	.error-content p {
+		margin: 0;
+		flex: 1;
+	}
+
+	.retry-button {
+		background: #dc2626;
+		color: white;
+		border: none;
+		padding: 0.5rem 1rem;
+		border-radius: 4px;
+		cursor: pointer;
+		font-size: 0.875rem;
+		transition: background-color 0.2s;
+	}
+
+	.retry-button:hover {
+		background: #b91c1c;
 	}
 
 	.admin-tabs {

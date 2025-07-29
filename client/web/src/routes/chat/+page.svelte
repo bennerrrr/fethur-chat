@@ -44,6 +44,7 @@
 				
 				// Get current user info
 				const user = await apiClient.getCurrentUser();
+				console.log('Chat page - Current user:', user); // Debug log
 				currentUser = user;
 				appActions.setCurrentUser(user);
 
@@ -248,7 +249,10 @@
 				{/if}
 			</div>
 			<div class="user-info">
-				Welcome, {currentUser?.username || 'User'}!
+				Welcome, {currentUser?.username || 'User'}! 
+				{#if currentUser?.role}
+					<span class="user-role">({currentUser.role})</span>
+				{/if}
 			</div>
 			<button class="logout-btn" on:click={logout}>Logout</button>
 		</div>
@@ -387,6 +391,12 @@
 		color: #6b7280;
 		flex: 1;
 		text-align: center;
+	}
+
+	.user-role {
+		color: #3b82f6;
+		font-weight: 500;
+		margin-left: 0.5rem;
 	}
 
 	.logout-btn {
