@@ -36,7 +36,7 @@ module.exports = {
 				'@typescript-eslint/no-unsafe-assignment': 'warn',
 				'@typescript-eslint/no-unsafe-return': 'warn',
 				'@typescript-eslint/no-unsafe-argument': 'warn',
-
+				
 				// Svelte-specific rules
 				'svelte/no-unused-svelte-ignore': 'error',
 				'svelte/no-dom-manipulating': 'error',
@@ -241,7 +241,7 @@ module.exports = {
 		],
 		'unicorn/throw-new-error': 'error'
 	},
-
+	
 	// Global settings
 	settings: {
 		'import/resolver': {
@@ -251,4 +251,4 @@ module.exports = {
 			}
 		}
 	}
-}; 
+};
