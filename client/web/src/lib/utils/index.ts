@@ -1,4 +1,4 @@
-import { browser } from '$app/environment';
+const browser = typeof window !== 'undefined';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
