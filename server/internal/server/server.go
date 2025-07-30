@@ -432,9 +432,10 @@ func (s *Server) handleGuestLogin(c *gin.Context) {
 	// Insert guest user into database
 	result, err := s.db.Exec(
 		"INSERT INTO users (username, email, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?)",
-		guestUsername, "", "", "user", time.Now(),
+		guestUsername, "", "$2a$10$guest.user.password.hash.placeholder", "user", time.Now(),
 	)
 	if err != nil {
+		log.Printf("Guest user creation error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create guest user"})
 		return
 	}
