@@ -42,6 +42,7 @@ type VoiceClient struct {
 	isDeafened bool
 	isSpeaking bool
 	lastSeen   time.Time
+	closed     bool
 	hub        *VoiceHub
 	mutex      sync.RWMutex
 }
@@ -131,16 +132,19 @@ func (h *VoiceHub) HandleWebSocket(c *gin.Context) {
 
 // handleRegister registers a new voice client
 func (h *VoiceHub) handleRegister(client *VoiceClient) {
-	h.mutex.Lock()
-	defer h.mutex.Unlock()
+       // Check for an existing client outside the lock to avoid deadlock
+       h.mutex.Lock()
+       existing := h.clients[client.ID]
+       h.mutex.Unlock()
 
-	// Remove existing client for this user if exists
-	if existing, exists := h.clients[client.ID]; exists {
-		log.Printf("Replacing existing voice client for user %d", client.ID)
-		h.handleUnregister(existing)
-	}
+       if existing != nil {
+               log.Printf("Replacing existing voice client for user %d", client.ID)
+               h.handleUnregister(existing)
+       }
 
-	h.clients[client.ID] = client
+       h.mutex.Lock()
+       h.clients[client.ID] = client
+       h.mutex.Unlock()
 	log.Printf("Voice client registered: user %d (%s)", client.ID, client.Username)
 
 	// Send welcome message
@@ -155,7 +159,11 @@ func (h *VoiceHub) handleRegister(client *VoiceClient) {
 // handleUnregister unregisters a voice client
 func (h *VoiceHub) handleUnregister(client *VoiceClient) {
 	h.mutex.Lock()
-	defer h.mutex.Unlock()
+	if client.closed {
+		h.mutex.Unlock()
+		return
+	}
+	client.closed = true
 
 	// Remove from clients
 	delete(h.clients, client.ID)
@@ -183,6 +191,7 @@ func (h *VoiceHub) handleUnregister(client *VoiceClient) {
 			}
 		}
 	}
+	h.mutex.Unlock()
 
 	// Close connection
 	close(client.send)

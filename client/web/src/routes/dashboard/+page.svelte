@@ -13,7 +13,7 @@
 	let newChannel = { name: '', description: '', serverId: '' };
 
 	onMount(async () => {
-		const token = localStorage.getItem('token');
+		const token = localStorage.getItem('auth_token');
 		if (!token) {
 			window.location.href = '/';
 			return;
@@ -30,7 +30,7 @@
 			if (response.ok) {
 				user = await response.json();
 			} else {
-				localStorage.removeItem('token');
+				localStorage.removeItem('auth_token');
 				window.location.href = '/';
 				return;
 			}
@@ -85,7 +85,7 @@
 	}
 
 	async function createServer() {
-		const token = localStorage.getItem('token');
+		const token = localStorage.getItem('auth_token');
 		if (!token) return;
 
 		try {
@@ -109,7 +109,7 @@
 	}
 
 	async function createChannel() {
-		const token = localStorage.getItem('token');
+		const token = localStorage.getItem('auth_token');
 		if (!token || !newChannel.serverId) return;
 
 		try {
@@ -133,7 +133,7 @@
 	}
 
 	function logout() {
-		localStorage.removeItem('token');
+		localStorage.removeItem('auth_token');
 		window.location.href = '/';
 	}
 

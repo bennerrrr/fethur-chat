@@ -55,7 +55,7 @@ func New(db *database.Database, auth *auth.Service) *Server {
 func (s *Server) setupRoutes() {
 	// Add CORS middleware
 	config := cors.DefaultConfig()
-	config.AllowOrigins = []string{"http://localhost:5173", "http://127.0.0.1:5173", "http://192.168.1.23:5173"}
+	config.AllowOrigins = []string{"http://localhost:5173", "https://localhost:5173", "http://127.0.0.1:5173", "https://127.0.0.1:5173", "http://192.168.1.23:5173", "https://192.168.1.23:5173"}
 	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
 	config.AllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization"}
 	config.AllowCredentials = true
@@ -426,47 +426,24 @@ func (s *Server) handleGuestLogin(c *gin.Context) {
 		return
 	}
 
-	// Check if auto login is enabled
-	autoLoginEnabled, err := s.db.GetSetting("auto_login_enabled")
-	if err != nil || autoLoginEnabled != "true" {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Auto login is not enabled"})
-		return
-	}
+	// Create a temporary guest user
+	guestUsername := fmt.Sprintf("guest_%d", time.Now().Unix())
 
-	// Get default credentials
-	defaultUsername, err := s.db.GetSetting("default_username")
-	if err != nil || defaultUsername == "" {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Default username not configured"})
-		return
-	}
-
-	defaultPassword, err := s.db.GetSetting("default_password")
-	if err != nil || defaultPassword == "" {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Default password not configured"})
-		return
-	}
-
-	// Get user from database
-	var userID int
-	var username, email, passwordHash, role string
-	err = s.db.QueryRow(
-		"SELECT id, username, email, password_hash, role FROM users WHERE username = ?",
-		defaultUsername,
-	).Scan(&userID, &username, &email, &passwordHash, &role)
-
+	// Insert guest user into database
+	result, err := s.db.Exec(
+		"INSERT INTO users (username, email, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?)",
+		guestUsername, "", "$2a$10$guest.user.password.hash.placeholder", "user", time.Now(),
+	)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Default user not found"})
+		log.Printf("Guest user creation error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create guest user"})
 		return
 	}
 
-	// Check password
-	if !s.auth.CheckPassword(defaultPassword, passwordHash) {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid default credentials"})
-		return
-	}
+	userID, _ := result.LastInsertId()
 
 	// Generate token
-	token, err := s.auth.GenerateToken(userID, username, role)
+	token, err := s.auth.GenerateToken(int(userID), guestUsername, "user")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
 		return
@@ -476,9 +453,9 @@ func (s *Server) handleGuestLogin(c *gin.Context) {
 		"token": token,
 		"user": gin.H{
 			"id":       userID,
-			"username": username,
-			"email":    email,
-			"role":     role,
+			"username": guestUsername,
+			"email":    "",
+			"role":     "user",
 		},
 	})
 }

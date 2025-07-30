@@ -19,6 +19,7 @@ const initialVoiceState: VoiceStore = {
 		echoCancellation: true,
 		noiseSuppression: true,
 		autoGainControl: true,
+		voiceActivityDetection: true,
 		pushToTalk: false,
 		pushToTalkKey: 'Space'
 	}
@@ -210,5 +211,17 @@ export const voiceActions = {
 		if (currentConnection) {
 			voiceClient.setMuted(!currentConnection.isMuted);
 		}
+	},
+
+	toggleDeafen(): void {
+		// TODO: Implement deafen functionality
+		console.log('Deafen functionality not yet implemented');
+	},
+
+	updateSettings(settings: Partial<VoiceStore['settings']>): void {
+		voiceStore.update(state => ({
+			...state,
+			settings: { ...state.settings, ...settings }
+		}));
 	}
 };

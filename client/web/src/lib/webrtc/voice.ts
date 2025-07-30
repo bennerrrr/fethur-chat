@@ -91,7 +91,9 @@ class VoiceClient {
 			if (saved) {
 				try {
 					const parsed = JSON.parse(saved);
-					this.settings.set({ ...this.getSettings(), ...parsed });
+					let currentSettings: VoiceSettings;
+					this.settings.subscribe(s => currentSettings = s)();
+					this.settings.set({ ...currentSettings!, ...parsed });
 				} catch (e) {
 					console.error('Failed to load voice settings:', e);
 				}
@@ -101,7 +103,8 @@ class VoiceClient {
 
 	private saveSettings() {
 		if (typeof window !== 'undefined') {
-			const settings = this.getSettings();
+			let settings: VoiceSettings;
+			this.settings.subscribe(s => settings = s)();
 			localStorage.setItem('voice-settings', JSON.stringify(settings));
 		}
 	}

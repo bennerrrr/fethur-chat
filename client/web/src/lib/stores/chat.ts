@@ -137,7 +137,7 @@ export const chatActions = {
 	// Send message
 	async sendMessage(channelId: number, content: string, replyToId?: number): Promise<void> {
 		try {
-			const response = await apiClient.sendMessage(channelId, {
+			await apiClient.sendMessage(channelId, {
 				content,
 				replyToId
 			});
@@ -146,8 +146,6 @@ export const chatActions = {
 			if (replyToId) {
 				chatActions.clearReply();
 			}
-			
-			return response;
 		} catch (error) {
 			console.error('Failed to send message:', error);
 			throw error;

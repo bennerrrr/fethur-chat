@@ -9,10 +9,17 @@ export default defineConfig({
 		host: true,
 		port: 5173,
 		strictPort: false,
-		https: {
-			key: fs.readFileSync(path.resolve(__dirname, '../../ssl/key.pem')),
-			cert: fs.readFileSync(path.resolve(__dirname, '../../ssl/cert.pem'))
-		},
+		https: (() => {
+			try {
+				return {
+					key: fs.readFileSync(path.resolve(__dirname, '../../ssl/key.pem')),
+					cert: fs.readFileSync(path.resolve(__dirname, '../../ssl/cert.pem'))
+				};
+			} catch (error) {
+				console.log('SSL certificates not found, running without HTTPS');
+				return undefined;
+			}
+		})(),
 		proxy: {
 			'/api': {
 				target: 'http://localhost:8081',
