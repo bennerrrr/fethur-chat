@@ -122,6 +122,13 @@ fi
 # Start frontend with HTTPS
 log "🌐 Starting frontend with HTTPS..."
 cd client/web || { error "Failed to change to client/web directory"; exit 1; }
+
+# Update .env file for HTTPS
+echo "PUBLIC_API_URL=https://localhost:5173" > .env
+echo "PUBLIC_WS_URL=wss://localhost:5173" >> .env
+echo "PUBLIC_DEV_MODE=true" >> .env
+echo "PUBLIC_LOG_LEVEL=debug" >> .env
+
 pnpm dev > ../../logs/frontend.log 2>&1 &
 FRONTEND_PID=$!
 cd ../.. || { error "Failed to return to root directory"; exit 1; }
@@ -218,7 +225,7 @@ show_status() {
         echo -e "  ${RED}✗${NC} Backend (http://localhost:8081)"
     fi
     
-    if curl -s https://localhost:5173 > /dev/null 2>&1 || curl -s http://localhost:5173 > /dev/null 2>&1; then
+    if curl -k -s https://localhost:5173 > /dev/null 2>&1 || curl -s http://localhost:5173 > /dev/null 2>&1; then
         echo -e "  ${GREEN}✓${NC} Frontend (https://localhost:5173)"
     else
         echo -e "  ${RED}✗${NC} Frontend (https://localhost:5173)"
