@@ -31,7 +31,7 @@
 	</div>
 
 	<div class="emoji-grid">
-		{#each emojiCategories[selectedCategory] as emoji}
+		{#each emojiCategories[selectedCategory as keyof typeof emojiCategories] as emoji}
 			<button
 				class="emoji-btn"
 				on:click={() => selectEmoji(emoji)}

@@ -111,7 +111,7 @@
 
 	function handleDragLeave(event: DragEvent) {
 		event.preventDefault();
-		if (!event.relatedTarget || !event.currentTarget?.contains(event.relatedTarget as Node)) {
+		if (!event.relatedTarget || !(event.currentTarget as HTMLElement)?.contains(event.relatedTarget as Node)) {
 			isDragging = false;
 		}
 	}

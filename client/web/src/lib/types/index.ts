@@ -187,6 +187,7 @@ export interface VoiceStore {
 		echoCancellation: boolean;
 		noiseSuppression: boolean;
 		autoGainControl: boolean;
+		voiceActivityDetection: boolean;
 		pushToTalk: boolean;
 		pushToTalkKey: string;
 	};

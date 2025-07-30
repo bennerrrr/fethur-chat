@@ -31,11 +31,19 @@ beforeAll(() => {
 	});
 
 	// Mock WebSocket
-	global.WebSocket = vi.fn().mockImplementation(() => ({
+	const WebSocketMock = vi.fn().mockImplementation(() => ({
 		close: vi.fn(),
 		send: vi.fn(),
 		readyState: 1,
 		addEventListener: vi.fn(),
 		removeEventListener: vi.fn(),
-	}));
+	})) as any;
+	
+	// Add required static properties
+	WebSocketMock.CONNECTING = 0;
+	WebSocketMock.OPEN = 1;
+	WebSocketMock.CLOSING = 2;
+	WebSocketMock.CLOSED = 3;
+	
+	global.WebSocket = WebSocketMock;
 });
