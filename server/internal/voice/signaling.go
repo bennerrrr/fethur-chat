@@ -132,16 +132,19 @@ func (h *VoiceHub) HandleWebSocket(c *gin.Context) {
 
 // handleRegister registers a new voice client
 func (h *VoiceHub) handleRegister(client *VoiceClient) {
-	h.mutex.Lock()
-	defer h.mutex.Unlock()
+       // Check for an existing client outside the lock to avoid deadlock
+       h.mutex.Lock()
+       existing := h.clients[client.ID]
+       h.mutex.Unlock()
 
-	// Remove existing client for this user if exists
-	if existing, exists := h.clients[client.ID]; exists {
-		log.Printf("Replacing existing voice client for user %d", client.ID)
-		h.handleUnregister(existing)
-	}
+       if existing != nil {
+               log.Printf("Replacing existing voice client for user %d", client.ID)
+               h.handleUnregister(existing)
+       }
 
-	h.clients[client.ID] = client
+       h.mutex.Lock()
+       h.clients[client.ID] = client
+       h.mutex.Unlock()
 	log.Printf("Voice client registered: user %d (%s)", client.ID, client.Username)
 
 	// Send welcome message

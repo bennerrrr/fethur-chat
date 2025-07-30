@@ -2,6 +2,19 @@
 
 echo "🚀 Starting Feathur with HTTPS support..."
 
+# Generate self-signed certificate if not present
+SSL_DIR="ssl"
+CERT_FILE="$SSL_DIR/cert.pem"
+KEY_FILE="$SSL_DIR/key.pem"
+
+if [[ ! -f "$CERT_FILE" || ! -f "$KEY_FILE" ]]; then
+    echo "🔐 Generating self-signed SSL certificate..."
+    mkdir -p "$SSL_DIR"
+    openssl req -x509 -newkey rsa:2048 -days 365 -nodes \
+        -keyout "$KEY_FILE" -out "$CERT_FILE" \
+        -subj "/C=US/ST=State/L=City/O=Feathur/OU=Development/CN=localhost"
+fi
+
 # Kill any existing processes
 echo "🔄 Stopping existing processes..."
 pkill -f "go run cmd/server/main.go" 2>/dev/null || true
