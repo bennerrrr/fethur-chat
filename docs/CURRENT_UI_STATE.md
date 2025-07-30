@@ -43,6 +43,7 @@ client/web/src/
 │   ├── MessageInput.svelte    # ✅ Message composition
 │   ├── UserAvatar.svelte      # ✅ User avatar with status
 │   ├── Modal.svelte           # ✅ Reusable modal dialogs
+│   ├── QuickSwitcher.svelte   # ✅ Ctrl+K navigation overlay
 │   ├── LoadingSpinner.svelte  # ✅ Loading indicators
 │   ├── Button.svelte          # ✅ Existing button component
 │   ├── Input.svelte           # ✅ Existing input component
@@ -53,6 +54,7 @@ client/web/src/
 │   ├── dashboard.svelte       # ✅ User dashboard
 │   ├── chat.svelte            # ✅ Main chat interface
 │   └── register.svelte        # ✅ Registration page
+│   └── settings/              # ✅ User and admin settings
 └── stores/
     ├── app.ts                 # ✅ App state management
     └── auth.ts                # ✅ Auth state management
@@ -111,6 +113,8 @@ npm run dev
 - Message reactions
 - User settings
 - Server settings
+- Plugin management
+- Quick switcher overlay
 
 ### 🚧 **Polish Needed**
 - Loading states for API calls
@@ -166,6 +170,8 @@ The app uses Svelte stores for state:
 - **TypeScript Support**: Added ✅
 - **Responsive Design**: Working ✅
 - **Accessibility**: Basic support ✅
+- **Quick Switcher**: Ctrl+K navigation overlay ✅
+- **Settings Page**: Voice and admin plugin sections ✅
 
 ### 🎯 **Targets**
 - **Bundle Size**: <500KB (estimated: ~300KB)

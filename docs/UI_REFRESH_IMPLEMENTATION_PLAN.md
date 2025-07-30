@@ -124,12 +124,15 @@ This document outlines the complete implementation plan for refreshing the Fethu
 - [ ] Add notification preferences
 - [ ] Implement theme customization
 - [ ] Add privacy settings
+- [ ] Implement quick switcher (Ctrl+K) for fast navigation
+- [ ] Create plugin management section (admin-only)
 - [ ] Create account security settings
 
 **Files to Create**:
 - `client/web/src/routes/settings.svelte`
 - `client/web/src/lib/components/ui/UserSettings.svelte`
 - `client/web/src/lib/components/ui/NotificationSettings.svelte`
+- `client/web/src/lib/components/ui/QuickSwitcher.svelte`
 
 #### 3.2 Server Settings
 **Priority**: Medium

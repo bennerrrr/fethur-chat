@@ -35,11 +35,15 @@ kill_processes() {
     pkill -f "pnpm dev" 2>/dev/null || true
     pkill -f "vite" 2>/dev/null || true
     
-    # Kill by port
-    lsof -ti:8081 | xargs kill -9 2>/dev/null || true
-    lsof -ti:5173 | xargs kill -9 2>/dev/null || true
-    lsof -ti:5174 | xargs kill -9 2>/dev/null || true
-    lsof -ti:5175 | xargs kill -9 2>/dev/null || true
+    # Kill by port if lsof is available
+    if command -v lsof >/dev/null 2>&1; then
+        lsof -ti:8081 | xargs kill -9 2>/dev/null || true
+        lsof -ti:5173 | xargs kill -9 2>/dev/null || true
+        lsof -ti:5174 | xargs kill -9 2>/dev/null || true
+        lsof -ti:5175 | xargs kill -9 2>/dev/null || true
+    else
+        warning "lsof not found; skipping port cleanup"
+    fi
     
     # Wait for processes to stop
     sleep 3
@@ -201,11 +205,13 @@ cleanup() {
         pkill -9 -f "pnpm dev" 2>/dev/null || true
     fi
     
-    # Kill by port as well
-    lsof -ti:8081 | xargs kill -9 2>/dev/null || true
-    lsof -ti:5173 | xargs kill -9 2>/dev/null || true
-    lsof -ti:5174 | xargs kill -9 2>/dev/null || true
-    lsof -ti:5175 | xargs kill -9 2>/dev/null || true
+    # Kill by port as well if lsof is available
+    if command -v lsof >/dev/null 2>&1; then
+        lsof -ti:8081 | xargs kill -9 2>/dev/null || true
+        lsof -ti:5173 | xargs kill -9 2>/dev/null || true
+        lsof -ti:5174 | xargs kill -9 2>/dev/null || true
+        lsof -ti:5175 | xargs kill -9 2>/dev/null || true
+    fi
     
     success "All services stopped"
     exit 0
@@ -236,4 +242,4 @@ show_status() {
 while true; do
     show_status
     sleep 30
-done 
+done

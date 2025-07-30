@@ -243,20 +243,34 @@
 		color: var(--color-text-muted);
 	}
 
-	.loading-screen p {
-		margin: 0;
-		font-size: var(--font-size-sm);
-		font-weight: 500;
-	}
+        .loading-screen p {
+                margin: 0;
+                font-size: var(--font-size-sm);
+                font-weight: 500;
+        }
+
+        .skip-link {
+                position: absolute;
+                top: -40px;
+                left: 0;
+                background: var(--color-accent);
+                color: white;
+                padding: 0.5rem 1rem;
+                z-index: 1000;
+        }
+        .skip-link:focus {
+                top: 0;
+        }
 </style>
 
 <!-- Main Layout -->
 <ErrorBoundary>
-	<div class="app-container">
-		{#if !initialized}
-			<div class="loading-screen">
-				<div class="loading-spinner"></div>
-				<p>Initializing...</p>
+        <div class="app-container">
+                <a href="#main-content" class="skip-link">Skip to content</a>
+                {#if !initialized}
+                        <div class="loading-screen">
+                                <div class="loading-spinner"></div>
+                                <p>Initializing...</p>
 			</div>
 		{:else}
 			<slot />

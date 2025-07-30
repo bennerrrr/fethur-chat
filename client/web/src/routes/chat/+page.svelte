@@ -11,13 +11,15 @@
 	import ChannelList from '$lib/components/ui/ChannelList.svelte';
 	import EnhancedChatArea from '$lib/components/ui/EnhancedChatArea.svelte';
 	import UserList from '$lib/components/ui/UserList.svelte';
-	import VoiceControls from '$lib/components/ui/VoiceControls.svelte';
+        import VoiceControls from '$lib/components/ui/VoiceControls.svelte';
+        import QuickSwitcher from '$lib/components/ui/QuickSwitcher.svelte';
 	import type { User, Server, Channel, Message } from '$lib/types';
 
 	let loading = true;
 	let error = '';
 	let currentUser: User | null = null;
-	let backendAvailable = false;
+        let backendAvailable = false;
+        let showQuickSwitcher = false;
 
 	// Subscribe to stores
 	$: currentServer = $appStore.currentServer;
@@ -25,8 +27,16 @@
 	$: servers = $appStore.servers;
 	$: isConnected = $appStore.isConnected;
 
-	onMount(async () => {
-		try {
+        function handleGlobalKeydown(e: KeyboardEvent) {
+                if (e.ctrlKey && e.key.toLowerCase() === 'k') {
+                        e.preventDefault();
+                        showQuickSwitcher = true;
+                }
+        }
+
+        onMount(async () => {
+                window.addEventListener('keydown', handleGlobalKeydown);
+                try {
 			// Check authentication using auth store
 			const auth = $authStore;
 			if (!auth.user || !auth.token) {
@@ -65,10 +75,10 @@
 		}
 	});
 
-	onDestroy(() => {
-		// Disconnect WebSocket when component is destroyed
-		wsClient.disconnect();
-	});
+        onDestroy(() => {
+                wsClient.disconnect();
+                window.removeEventListener('keydown', handleGlobalKeydown);
+        });
 
 	async function loadServers() {
 		try {
@@ -296,8 +306,24 @@
 				{/if}
 			</div>
 			<button class="logout-btn" on:click={logout}>Logout</button>
-		</div>
-	{/if}
+        </div>
+{/if}
+
+<QuickSwitcher
+        {servers}
+        channels={currentServer ? currentServer.channels || [] : []}
+        bind:open={showQuickSwitcher}
+        on:select={(e) => {
+                const item = e.detail;
+                showQuickSwitcher = false;
+                if (item.type === 'server') {
+                        selectServer(item);
+                } else if (item.type === 'channel') {
+                        selectChannel(item);
+                }
+        }}
+        on:close={() => (showQuickSwitcher = false)}
+/>
 </div>
 
 <style>
