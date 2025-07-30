@@ -78,53 +78,72 @@ else
     log "🔐 SSL certificates already exist"
 fi
 
+# Create logs directory first
+mkdir -p logs
+
 # Kill existing processes
 kill_processes
 
 # Start backend server
 log "🔧 Starting backend server..."
-cd server
+cd server || { error "Failed to change to server directory"; exit 1; }
 go run cmd/server/main.go > ../logs/backend.log 2>&1 &
 BACKEND_PID=$!
-cd ..
+cd .. || { error "Failed to return to root directory"; exit 1; }
 
 # Wait for backend to start with retry logic
 log "⏳ Waiting for backend to start..."
 BACKEND_READY=false
-for i in {1..10}; do
+for i in {1..15}; do
+    # Check if the process is still running
+    if ! kill -0 $BACKEND_PID 2>/dev/null; then
+        error "Backend process died unexpectedly"
+        error "Check logs/backend.log for details"
+        exit 1
+    fi
+    
+    # Check if the service is responding
     if curl -s http://localhost:8081/health > /dev/null 2>&1; then
         BACKEND_READY=true
         break
     fi
-    log "Attempt $i/10: Backend not ready yet..."
-    sleep 2
+    log "Attempt $i/15: Backend not ready yet..."
+    sleep 3
 done
 
 if [[ "$BACKEND_READY" == "true" ]]; then
     success "Backend server is running on http://localhost:8081"
 else
-    error "Backend server failed to start after 10 attempts"
+    error "Backend server failed to start after 15 attempts"
     error "Check logs/backend.log for details"
     exit 1
 fi
 
 # Start frontend with HTTPS
 log "🌐 Starting frontend with HTTPS..."
-cd client/web
+cd client/web || { error "Failed to change to client/web directory"; exit 1; }
 pnpm dev > ../../logs/frontend.log 2>&1 &
 FRONTEND_PID=$!
-cd ../..
+cd ../.. || { error "Failed to return to root directory"; exit 1; }
 
 # Wait for frontend to start with retry logic
 log "⏳ Waiting for frontend to start..."
 FRONTEND_READY=false
-for i in {1..15}; do
-    if curl -s https://localhost:5173 > /dev/null 2>&1 || curl -s http://localhost:5173 > /dev/null 2>&1; then
+for i in {1..20}; do
+    # Check if the process is still running
+    if ! kill -0 $FRONTEND_PID 2>/dev/null; then
+        error "Frontend process died unexpectedly"
+        error "Check logs/frontend.log for details"
+        exit 1
+    fi
+    
+    # Check if the service is responding
+    if curl -k -s https://localhost:5173 > /dev/null 2>&1 || curl -s http://localhost:5173 > /dev/null 2>&1; then
         FRONTEND_READY=true
         break
     fi
-    log "Attempt $i/15: Frontend not ready yet..."
-    sleep 2
+    log "Attempt $i/20: Frontend not ready yet..."
+    sleep 3
 done
 
 if [[ "$FRONTEND_READY" == "true" ]]; then
@@ -133,8 +152,7 @@ else
     warning "Frontend may not be fully ready, but continuing..."
 fi
 
-# Create logs directory
-mkdir -p logs
+
 
 echo ""
 success "🎉 Feathur is now running with HTTPS!"
@@ -155,11 +173,15 @@ cleanup() {
     log "🛑 Stopping services..."
     
     # Kill processes gracefully first
-    kill $BACKEND_PID 2>/dev/null || true
-    kill $FRONTEND_PID 2>/dev/null || true
+    if [[ -n "$BACKEND_PID" ]]; then
+        kill $BACKEND_PID 2>/dev/null || true
+    fi
+    if [[ -n "$FRONTEND_PID" ]]; then
+        kill $FRONTEND_PID 2>/dev/null || true
+    fi
     
     # Wait a moment
-    sleep 2
+    sleep 3
     
     # Force kill if still running
     if pgrep -f "go run cmd/server/main.go" > /dev/null; then
@@ -171,6 +193,12 @@ cleanup() {
         log "Force killing frontend..."
         pkill -9 -f "pnpm dev" 2>/dev/null || true
     fi
+    
+    # Kill by port as well
+    lsof -ti:8081 | xargs kill -9 2>/dev/null || true
+    lsof -ti:5173 | xargs kill -9 2>/dev/null || true
+    lsof -ti:5174 | xargs kill -9 2>/dev/null || true
+    lsof -ti:5175 | xargs kill -9 2>/dev/null || true
     
     success "All services stopped"
     exit 0
