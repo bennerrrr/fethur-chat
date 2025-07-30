@@ -1,5 +1,6 @@
 import { browser } from '$app/environment';
-import { PUBLIC_WS_URL } from '$env/static/public';
+// Use dynamic env import so build doesn't fail if variable is missing
+const { PUBLIC_WS_URL } = import.meta.env;
 import type { WebSocketEvent, TypingEvent, MessageEvent, UserEvent } from '$lib/types';
 
 const WS_BASE_URL = PUBLIC_WS_URL || 'ws://localhost:8081';

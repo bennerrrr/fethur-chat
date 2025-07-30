@@ -21,3 +21,4 @@ export { default as EnhancedMessageInput } from './EnhancedMessageInput.svelte';
 export { default as EnhancedChatArea } from './EnhancedChatArea.svelte';
 export { default as EnhancedVoiceControls } from './EnhancedVoiceControls.svelte';
 export { default as ReactionPicker } from './ReactionPicker.svelte';
+export { default as QuickSwitcher } from './QuickSwitcher.svelte';

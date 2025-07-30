@@ -45,4 +45,4 @@ else
 fi
 cd ..
 
-print_success "🎉 Quick tests completed successfully!" 
+print_success "Quick tests completed successfully!"
