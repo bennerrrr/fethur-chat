@@ -52,8 +52,8 @@ class WebSocketClient {
 		return new Promise((resolve, reject) => {
 			try {
 				this.isConnectingState = true;
-				// Use full HTTPS URL in browser to leverage Vite's proxy
-				const wsUrl = browser ? `wss://localhost:5173/ws?token=${encodeURIComponent(token)}` : `${this.url}/ws?token=${encodeURIComponent(token)}`;
+				// Use relative URL in browser to leverage Vite's proxy
+				const wsUrl = browser ? `/ws?token=${encodeURIComponent(token)}` : `${this.url}/ws?token=${encodeURIComponent(token)}`;
 				this.ws = new WebSocket(wsUrl);
 
 				this.ws.onopen = () => {

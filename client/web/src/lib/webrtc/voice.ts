@@ -128,7 +128,7 @@ class VoiceClient {
 
 		try {
 			// Use relative URL in browser to leverage Vite's proxy
-			const wsUrl = typeof window !== 'undefined' ? `wss://localhost:5173/voice?token=${encodeURIComponent(token)}` : `${serverUrl.replace('http', 'ws')}/voice?token=${encodeURIComponent(token)}`;
+			const wsUrl = typeof window !== 'undefined' ? `/voice?token=${encodeURIComponent(token)}` : `${serverUrl.replace('http', 'ws')}/voice?token=${encodeURIComponent(token)}`;
 			console.log('Connecting to voice WebSocket:', wsUrl);
 			this.ws = new WebSocket(wsUrl);
 			
