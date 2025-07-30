@@ -8,8 +8,10 @@
   let query = '';
   let inputEl: HTMLInputElement;
 
-  $: items = [...servers.map(s => ({type: 'server', id: s.id, name: s.name})),
-              ...channels.map(c => ({type: 'channel', id: c.id, name: c.name, serverId: c.serverId}))];
+  $: items = [
+    ...(Array.isArray(servers) ? servers.map(s => ({type: 'server', id: s.id, name: s.name})) : []),
+    ...(Array.isArray(channels) ? channels.map(c => ({type: 'channel', id: c.id, name: c.name, serverId: c.serverId})) : [])
+  ];
   $: filtered = items.filter(i => i.name.toLowerCase().includes(query.toLowerCase()));
 
   function handleKeydown(e: KeyboardEvent) {

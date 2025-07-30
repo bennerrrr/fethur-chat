@@ -24,8 +24,10 @@
 	// Subscribe to stores
 	$: currentServer = $appStore.currentServer;
 	$: currentChannel = $appStore.currentChannel;
-	$: servers = $appStore.servers;
 	$: isConnected = $appStore.isConnected;
+	
+	// Initialize servers array
+	let servers: Server[] = [];
 
         function handleGlobalKeydown(e: KeyboardEvent) {
                 if (e.ctrlKey && e.key.toLowerCase() === 'k') {
@@ -36,44 +38,74 @@
 
         onMount(async () => {
                 window.addEventListener('keydown', handleGlobalKeydown);
+                await initializeChat();
+        });
+
+        async function initializeChat() {
                 try {
-			// Check authentication using auth store
-			const auth = $authStore;
-			if (!auth.user || !auth.token) {
-				goto('/');
-				return;
-			}
+                        // Check authentication using auth store
+                        const auth = $authStore;
+                        if (!auth.user || !auth.token) {
+                                goto('/');
+                                return;
+                        }
 
-			// Set the token in the API client
-			apiClient.setToken(auth.token);
-			currentUser = auth.user;
+                        // Set the token in the API client
+                        apiClient.setToken(auth.token);
+                        currentUser = auth.user;
+                        
+                        // Initialize the app store with the user
+                        appActions.initialize(auth.user);
+                        
+                        // Ensure the auth store is properly set
+                        authActions.updateUser(auth.user);
 
-			// Try to check backend availability
-			try {
-				await apiClient.healthCheck();
-				backendAvailable = true;
-				
-				// Load servers
-				await loadServers();
+                        // Try to check backend availability
+                        try {
+                                await apiClient.healthCheck();
+                                backendAvailable = true;
+                                
+                                // Load servers
+                                await loadServers();
 
-				// Connect to WebSocket
-				await connectWebSocket(auth.token);
+                                // Connect to WebSocket
+                                await connectWebSocket(auth.token);
 
-				// Set up WebSocket event handlers
-				setupWebSocketListeners();
+                                // Set up WebSocket event handlers
+                                setupWebSocketListeners();
 
-			} catch (err) {
-				console.warn('Backend not available:', err);
-				backendAvailable = false;
-			}
+                        } catch (err) {
+                                console.warn('Backend not available:', err);
+                                backendAvailable = false;
+                        }
 
-		} catch (err) {
-			console.error('Error:', err);
-			error = 'Failed to load chat';
-		} finally {
-			loading = false;
+                } catch (err) {
+                        console.error('Error:', err);
+                        error = 'Failed to load chat';
+                } finally {
+                        loading = false;
+                }
+        }
+
+        		// Reactive statement to handle auth store changes
+		$: if ($authStore.isInitialized && !loading) {
+				if ($authStore.user && $authStore.token) {
+						if (!currentUser || currentUser.id !== $authStore.user.id) {
+								console.log('Auth store changed, reinitializing chat...');
+								currentUser = $authStore.user;
+								apiClient.setToken($authStore.token);
+								appActions.initialize($authStore.user);
+								loadServers();
+						}
+				} else {
+						goto('/');
+				}
 		}
-	});
+
+		// Reactive statement to update servers from app store
+		$: if ($appStore.servers && $appStore.servers.length > 0) {
+				servers = $appStore.servers;
+		}
 
         onDestroy(() => {
                 wsClient.disconnect();
@@ -84,6 +116,7 @@
 		try {
 			const serversList = await apiClient.getServers();
 			appActions.setServers(serversList);
+			servers = serversList; // Update local servers array
 			
 			// Auto-select first server if available
 			if (serversList.length > 0 && !currentServer) {
@@ -96,12 +129,15 @@
 
 	async function selectServer(server: Server) {
 		try {
-			appActions.setCurrentServer(server);
-			
-			// Load channels for the server
+			// Load channels for the server first
 			const channels = await apiClient.getChannels(server.id);
 			const serverWithChannels = { ...server, channels };
+			
+			// Update the server in the store with channels
 			appActions.updateServer(server.id, { channels });
+			
+			// Set the current server with channels
+			appActions.setCurrentServer(serverWithChannels);
 			
 			// Auto-select first channel if available
 			if (channels.length > 0 && !currentChannel) {
@@ -158,9 +194,13 @@
 			const typingEvent = data as { channelId: number; userId: number; username: string; type: string };
 			if (typingEvent.channelId === currentChannel?.id) {
 				chatActions.updateTypingUsers({
-					userId: typingEvent.userId,
-					username: typingEvent.username,
-					startedAt: new Date()
+					type: typingEvent.type as 'typing_start' | 'typing_stop',
+					timestamp: new Date(),
+					data: {
+						userId: typingEvent.userId,
+						username: typingEvent.username,
+						channelId: typingEvent.channelId
+					}
 				});
 			}
 		});
@@ -182,6 +222,8 @@
 			wsClient.disconnect();
 			appActions.reset();
 			chatActions.clearChat();
+			authActions.logout();
+			localStorage.removeItem('auth_token');
 			localStorage.removeItem('token');
 			goto('/');
 		}
@@ -231,7 +273,7 @@
 			<!-- Server List Sidebar -->
 			<aside class="server-sidebar">
 				<ServerList 
-					{servers}
+					servers={servers || []}
 					currentServerId={currentServer?.id || null}
 					{currentUser}
 					on:selectServer={(e) => selectServer(e.detail)}
@@ -299,10 +341,10 @@
 					<span class="status-offline">🔴 Disconnected</span>
 				{/if}
 			</div>
-			<div class="user-info">
-				Welcome, {currentUser?.username || 'User'}! 
-				{#if currentUser?.role}
-					<span class="user-role">({currentUser.role})</span>
+						<div class="user-info">
+				Welcome, {$authStore.user?.username || currentUser?.username || 'User'}!
+				{#if $authStore.user?.role || currentUser?.role}
+					<span class="user-role">({$authStore.user?.role || currentUser?.role})</span>
 				{/if}
 			</div>
 			<button class="logout-btn" on:click={logout}>Logout</button>
@@ -310,16 +352,18 @@
 {/if}
 
 <QuickSwitcher
-        {servers}
+        servers={servers || []}
         channels={currentServer ? currentServer.channels || [] : []}
         bind:open={showQuickSwitcher}
         on:select={(e) => {
                 const item = e.detail;
                 showQuickSwitcher = false;
                 if (item.type === 'server') {
-                        selectServer(item);
+                        const server = servers.find(s => s.id === item.id);
+                        if (server) selectServer(server);
                 } else if (item.type === 'channel') {
-                        selectChannel(item);
+                        const channel = currentServer?.channels?.find(c => c.id === item.id);
+                        if (channel) selectChannel(channel);
                 }
         }}
         on:close={() => (showQuickSwitcher = false)}

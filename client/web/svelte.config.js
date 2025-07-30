@@ -1,4 +1,4 @@
-import adapter from '@sveltejs/adapter-static';
+import adapter from '@sveltejs/adapter-auto';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 
 /** @type {import('@sveltejs/kit').Config} */
@@ -8,21 +8,7 @@ const config = {
 	preprocess: vitePreprocess(),
 
 	kit: {
-		adapter: adapter({
-			pages: 'build',
-			assets: 'build',
-			fallback: 'index.html',
-			precompress: false
-		}),
-		prerender: {
-			handleHttpError: ({ path, referrer, message }) => {
-				// Ignore missing routes during prerender
-				if (message.includes('Not found')) {
-					return;
-				}
-				throw new Error(message);
-			}
-		}
+		adapter: adapter()
 	}
 };
 

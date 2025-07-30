@@ -86,8 +86,8 @@
 			// Start local stream
 			await voiceClient.startLocalStream();
 
-			// Join test voice channel (channel ID 3 is our voice channel)
-			await voiceClient.joinChannel(3, 1);
+			// Join test voice channel (channel ID 2 is our voice channel)
+			await voiceClient.joinChannel(2, 1);
 
 		} catch (err: any) {
 			error = err.message || 'Failed to connect to voice server';
@@ -254,10 +254,10 @@
 <style>
 	.voice-test-page {
 		min-height: 100vh;
-		background: var(--color-bg);
-		color: var(--color-text);
+		background: var(--color-bg, #1a1a1a);
+		color: var(--color-text, #ffffff);
 		padding: 2rem;
-		font-family: var(--font-family);
+		font-family: var(--font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
 	}
 
 	.test-container {
@@ -266,35 +266,35 @@
 	}
 
 	h1 {
-		font-size: var(--font-size-3xl);
+		font-size: var(--font-size-3xl, 2rem);
 		margin-bottom: 0.5rem;
-		color: var(--color-text);
+		color: var(--color-text, #ffffff);
 		text-align: center;
 	}
 
 	.test-container > p {
 		text-align: center;
-		color: var(--color-text-muted);
+		color: var(--color-text-muted, #888);
 		margin-bottom: 2rem;
 	}
 
 	.notice-section {
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
+		background: var(--color-surface, #2d2d2d);
+		border: 1px solid var(--color-border, #404040);
+		border-radius: var(--radius-lg, 8px);
 		padding: 1.5rem;
 		margin-bottom: 1.5rem;
 		text-align: center;
 	}
 
 	.notice-section h2 {
-		font-size: var(--font-size-xl);
+		font-size: var(--font-size-xl, 1.25rem);
 		margin-bottom: 0.5rem;
-		color: var(--color-text);
+		color: var(--color-text, #ffffff);
 	}
 
 	.notice-section p {
-		color: var(--color-text-muted);
+		color: var(--color-text-muted, #888);
 		margin-bottom: 1rem;
 	}
 
@@ -306,11 +306,11 @@
 
 	.notice-section li {
 		margin-bottom: 0.5rem;
-		color: var(--color-text-muted);
+		color: var(--color-text-muted, #888);
 	}
 
 	.notice-section strong {
-		color: var(--color-text);
+		color: var(--color-text, #ffffff);
 	}
 
 	.status-grid {
@@ -323,9 +323,9 @@
 	.status-grid p {
 		margin: 0;
 		padding: 0.5rem;
-		background: var(--color-primary);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
+		background: var(--color-primary, #2d2d2d);
+		border: 1px solid var(--color-border, #404040);
+		border-radius: var(--radius-sm, 4px);
 		text-align: center;
 	}
 
@@ -333,7 +333,7 @@
 		padding: 1rem;
 		background: rgba(245, 158, 11, 0.1);
 		border: 1px solid #f59e0b;
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-md, 6px);
 		margin-top: 1rem;
 	}
 
@@ -343,21 +343,21 @@
 	}
 
 	.test-section {
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
+		background: var(--color-surface, #2d2d2d);
+		border: 1px solid var(--color-border, #404040);
+		border-radius: var(--radius-lg, 8px);
 		padding: 1.5rem;
 		margin-bottom: 1.5rem;
 	}
 
 	.test-section h2 {
-		font-size: var(--font-size-xl);
+		font-size: var(--font-size-xl, 1.25rem);
 		margin-bottom: 0.5rem;
-		color: var(--color-text);
+		color: var(--color-text, #ffffff);
 	}
 
 	.test-section p {
-		color: var(--color-text-muted);
+		color: var(--color-text-muted, #888);
 		margin-bottom: 1rem;
 	}
 
@@ -370,7 +370,7 @@
 	.btn-primary, .btn-secondary {
 		padding: 0.75rem 1.5rem;
 		border: none;
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-md, 6px);
 		font-weight: 500;
 		cursor: pointer;
 		transition: all 0.2s ease;
@@ -381,23 +381,23 @@
 	}
 
 	.btn-primary {
-		background: var(--color-accent);
+		background: var(--color-accent, #3b82f6);
 		color: white;
 	}
 
 	.btn-primary:hover {
-		background: var(--color-accent-hover);
+		background: var(--color-accent-hover, #2563eb);
 		transform: translateY(-1px);
 	}
 
 	.btn-secondary {
-		background: var(--color-primary);
-		color: var(--color-text);
-		border: 1px solid var(--color-border);
+		background: var(--color-primary, #2d2d2d);
+		color: var(--color-text, #ffffff);
+		border: 1px solid var(--color-border, #404040);
 	}
 
 	.btn-secondary:hover {
-		background: var(--color-accent);
+		background: var(--color-accent, #3b82f6);
 		color: white;
 		transform: translateY(-1px);
 	}
@@ -405,25 +405,25 @@
 	.status-success {
 		padding: 0.75rem;
 		background: rgba(16, 185, 129, 0.1);
-		border: 1px solid var(--color-success);
-		border-radius: var(--radius-md);
-		color: var(--color-success);
+		border: 1px solid var(--color-success, #10b981);
+		border-radius: var(--radius-md, 6px);
+		color: var(--color-success, #10b981);
 		font-weight: 500;
 	}
 
 	.error-message {
 		padding: 1rem;
 		background: rgba(239, 68, 68, 0.1);
-		border: 1px solid var(--color-error);
-		border-radius: var(--radius-md);
-		color: var(--color-error);
+		border: 1px solid var(--color-error, #ef4444);
+		border-radius: var(--radius-md, 6px);
+		color: var(--color-error, #ef4444);
 		margin-bottom: 1rem;
 	}
 
 	.devices-list h3 {
-		font-size: var(--font-size-lg);
+		font-size: var(--font-size-lg, 1.125rem);
 		margin: 1rem 0 0.5rem 0;
-		color: var(--color-text);
+		color: var(--color-text, #ffffff);
 	}
 
 	.device-item {
@@ -431,20 +431,20 @@
 		justify-content: space-between;
 		align-items: center;
 		padding: 0.5rem;
-		background: var(--color-primary);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
+		background: var(--color-primary, #2d2d2d);
+		border: 1px solid var(--color-border, #404040);
+		border-radius: var(--radius-sm, 4px);
 		margin-bottom: 0.5rem;
 	}
 
 	.device-name {
 		font-weight: 500;
-		color: var(--color-text);
+		color: var(--color-text, #ffffff);
 	}
 
 	.device-id {
-		font-size: var(--font-size-sm);
-		color: var(--color-text-muted);
+		font-size: var(--font-size-sm, 0.875rem);
+		color: var(--color-text-muted, #888);
 		font-family: monospace;
 	}
 

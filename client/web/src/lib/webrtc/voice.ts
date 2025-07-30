@@ -121,26 +121,34 @@ class VoiceClient {
 		return settings!;
 	}
 
-	async connect(token: string, serverUrl: string = import.meta.env.PUBLIC_WS_URL || 'ws://localhost:8081'): Promise<void> {
+	async connect(token: string, serverUrl: string = ''): Promise<void> {
 		if (this.ws?.readyState === WebSocket.OPEN) {
 			return;
 		}
 
 		try {
-			this.ws = new WebSocket(`${serverUrl.replace('http', 'ws')}/voice?token=${token}`);
+			// Use relative URL in browser to leverage Vite's proxy
+			const wsUrl = typeof window !== 'undefined' ? `wss://localhost:5173/voice?token=${encodeURIComponent(token)}` : `${serverUrl.replace('http', 'ws')}/voice?token=${encodeURIComponent(token)}`;
+			console.log('Connecting to voice WebSocket:', wsUrl);
+			this.ws = new WebSocket(wsUrl);
 			
 			this.ws.onopen = () => {
-				console.log('Voice WebSocket connected');
+				console.log('Voice WebSocket connected successfully');
 				this.state.update(s => ({ ...s, isConnected: true, connectionQuality: 'excellent' }));
 				this.reconnectAttempts = 0;
 			};
 
 			this.ws.onmessage = (event) => {
-				this.handleMessage(JSON.parse(event.data));
+				try {
+					const data = JSON.parse(event.data);
+					this.handleMessage(data);
+				} catch (error) {
+					console.error('Failed to parse voice message:', error);
+				}
 			};
 
-			this.ws.onclose = () => {
-				console.log('Voice WebSocket disconnected');
+			this.ws.onclose = (event) => {
+				console.log('Voice WebSocket disconnected:', event.code, event.reason);
 				this.state.update(s => ({ ...s, isConnected: false, connectionQuality: 'disconnected' }));
 				this.handleDisconnect();
 			};
@@ -337,6 +345,11 @@ class VoiceClient {
 			channel_id: channelId,
 			server_id: serverId
 		});
+
+		// Start local stream if not already started
+		if (!this.localStream) {
+			await this.startLocalStream();
+		}
 	}
 
 	async leaveChannel(): Promise<void> {
@@ -372,11 +385,12 @@ class VoiceClient {
 				throw new Error('MediaDevices API not available. Please use HTTPS or grant microphone permissions.');
 			}
 
+			const settings = this.getSettings();
 			const stream = await navigator.mediaDevices.getUserMedia({
 				audio: {
-					noiseSuppression: this.settings.get().noiseSuppression,
-					echoCancellation: this.settings.get().echoCancellation,
-					autoGainControl: this.settings.get().autoGainControl
+					noiseSuppression: settings.noiseSuppression,
+					echoCancellation: settings.echoCancellation,
+					autoGainControl: settings.autoGainControl
 				},
 				video: false
 			});
@@ -385,7 +399,7 @@ class VoiceClient {
 			this.state.update(s => ({ ...s, localStream: stream }));
 
 			// Start voice activity detection if enabled
-			if (this.settings.get().voiceActivityDetection) {
+			if (settings.voiceActivityDetection) {
 				this.setupVoiceActivityDetection(stream);
 			}
 

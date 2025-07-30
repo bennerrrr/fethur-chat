@@ -8,6 +8,8 @@
 	export let currentServerId: number | null = null;
 	export let currentUser: any = null;
 
+
+
 	const dispatch = createEventDispatcher<{
 		selectServer: Server;
 		createServer: void;

@@ -3,6 +3,7 @@
 	import { browser } from '$app/environment';
 	import { apiClient } from '$lib/api/client';
 	import { goto } from '$app/navigation';
+	import { authStore } from '$lib/stores/auth';
 	import type { User } from '$lib/types';
 	import type { Server } from '$lib/types';
 
@@ -42,33 +43,27 @@
 	onMount(async () => {
 		if (!browser) return;
 		
-		const token = localStorage.getItem('auth_token');
-		console.log('Admin page - Token:', token ? 'Present' : 'Missing');
-		
-		if (!token) {
+		// Check if user is authenticated via auth store
+		const auth = $authStore;
+		if (!auth.user || !auth.token) {
+			console.log('Admin page - No authenticated user');
 			goto('/');
 			return;
 		}
 		
-		apiClient.setToken(token);
-		
-		try {
-			// Check if user is admin
-			currentUser = await apiClient.getCurrentUser();
-			console.log('Admin page - Current user:', currentUser);
-			
-			if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'super_admin')) {
-				console.log('Admin page - Access denied, role:', currentUser?.role);
-				error = 'Access denied. Admin privileges required.';
-				return;
-			}
-			
-			console.log('Admin page - Loading data...');
-			await loadData();
-		} catch (err: any) {
-			console.error('Admin page error:', err);
-			error = err.message || 'Failed to load admin data';
+		// Check if user has admin privileges
+		if (auth.user.role !== 'admin' && auth.user.role !== 'super_admin') {
+			console.log('Admin page - Access denied, role:', auth.user.role);
+			error = 'Access denied. Admin privileges required.';
+			return;
 		}
+		
+		// Set current user from auth store
+		currentUser = auth.user;
+		apiClient.setToken(auth.token);
+		
+		console.log('Admin page - Loading data for user:', currentUser.username);
+		await loadData();
 	});
 	
 	async function loadData() {
@@ -278,7 +273,7 @@
 <div class="admin-page">
 	<div class="admin-header">
 		<h1>Admin Dashboard</h1>
-		<p>Welcome, {currentUser?.username} ({currentUser?.role})</p>
+		<p>Welcome, {$authStore.user?.username || currentUser?.username || 'User'} ({$authStore.user?.role || currentUser?.role})</p>
 	</div>
 
 	{#if error}

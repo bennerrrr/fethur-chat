@@ -143,15 +143,18 @@ export const chatActions = {
 		}));
 
 		try {
-			const response = await apiClient.getMessages(channelId, { limit, before });
+			const response = await apiClient.getMessages(channelId, 1, limit);
+			
+			// Handle the actual backend response format
+			const messages = response.messages || response.data || [];
 			
 			chatStore.update(state => ({
 				...state,
 				messages: before 
-					? [...response.data.reverse(), ...state.messages]
-					: response.data.reverse(),
+					? [...messages.reverse(), ...state.messages]
+					: messages.reverse(),
 				isLoadingMessages: false,
-				hasMoreMessages: response.hasMore
+				hasMoreMessages: response.hasMore || false
 			}));
 		} catch (error) {
 			console.error('Failed to load messages:', error);

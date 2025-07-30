@@ -12,7 +12,8 @@ import type {
 } from '$lib/types';
 import { getStorageItem, setStorageItem, removeStorageItem } from '$lib/utils';
 
-const API_BASE_URL = import.meta.env.PUBLIC_API_URL || 'http://localhost:8081';
+// Use relative URLs in browser to leverage Vite's proxy, fallback to direct URL
+const API_BASE_URL = browser ? '' : (import.meta.env.PUBLIC_API_URL || 'http://localhost:8081');
 
 class ApiError extends Error {
 	constructor(
@@ -151,7 +152,8 @@ class ApiClient {
 
 	// Server endpoints
 	async getServers(): Promise<Server[]> {
-		return this.request<Server[]>('/api/servers');
+		const response = await this.request<{ servers: Server[] }>('/api/servers');
+		return response.servers;
 	}
 
 	async getServer(serverId: number): Promise<Server> {
@@ -180,7 +182,13 @@ class ApiClient {
 
 	// Channel endpoints
 	async getChannels(serverId: number): Promise<Channel[]> {
-		return this.request<Channel[]>(`/api/servers/${serverId}/channels`);
+		const response = await this.request<{ channels: any[] }>(`/api/servers/${serverId}/channels`);
+		// Map the API response to match the frontend Channel interface
+		return response.channels.map(channel => ({
+			...channel,
+			type: channel.channel_type, // Map channel_type to type
+			serverId: serverId
+		}));
 	}
 
 	async createChannel(serverId: number, channelData: Partial<Channel>): Promise<Channel> {
@@ -208,12 +216,12 @@ class ApiClient {
 		channelId: number,
 		page = 1,
 		limit = 50
-	): Promise<PaginatedResponse<Message>> {
+	): Promise<{ messages: Message[] }> {
 		const params = new URLSearchParams({
 			page: page.toString(),
 			limit: limit.toString()
 		});
-		return this.request<PaginatedResponse<Message>>(`/api/channels/${channelId}/messages?${params}`);
+		return this.request<{ messages: Message[] }>(`/api/channels/${channelId}/messages?${params}`);
 	}
 
 	async sendMessage(channelId: number, content: string, replyToId?: number): Promise<Message> {
@@ -222,10 +230,13 @@ class ApiClient {
 			messageData.replyToId = replyToId;
 		}
 
-		return this.request<Message>(`/api/channels/${channelId}/messages`, {
+		const response = await this.request<{ success: boolean; message: string; data: any }>(`/api/channels/${channelId}/messages`, {
 			method: 'POST',
 			body: JSON.stringify(messageData)
 		});
+
+		// Return the message data from the response
+		return response.data;
 	}
 
 	async updateMessage(messageId: number, content: string): Promise<Message> {
@@ -243,7 +254,8 @@ class ApiClient {
 
 	// Admin endpoints
 	async getUsers(): Promise<User[]> {
-		return this.request<User[]>('/api/admin/users');
+		const response = await this.request<{ success: boolean; data: User[] }>('/api/admin/users');
+		return response.data;
 	}
 
 	async createUser(userData: Partial<User>): Promise<User> {

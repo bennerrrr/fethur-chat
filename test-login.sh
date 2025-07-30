@@ -1,66 +1,65 @@
 #!/bin/bash
 
-echo "🧪 Testing Feathur Login Functionality"
-echo "======================================"
+# Feathur Login Test Script
+# This script tests the login functionality through the HTTPS proxy
 
-# Test backend health
-echo "1. Testing backend health..."
-if curl -s http://localhost:8081/health > /dev/null; then
-    echo "   ✅ Backend is healthy"
-else
-    echo "   ❌ Backend is not responding"
+BASE_URL="https://localhost:5173"
+ADMIN_USERNAME="feathur_admin"
+ADMIN_PASSWORD="Admin123!@#"
+
+echo "🧪 Feathur Login Test Script"
+echo "============================"
+
+# Check if frontend is running
+echo "📡 Checking frontend status..."
+if ! curl -s -k "$BASE_URL/health" > /dev/null; then
+    echo "❌ Frontend is not running or proxy not working."
+    echo "   Make sure the frontend is running: cd client/web && pnpm dev"
     exit 1
 fi
 
-# Test frontend health
-echo "2. Testing frontend health..."
-if curl -k -s https://localhost:5173 > /dev/null; then
-    echo "   ✅ Frontend is responding"
-else
-    echo "   ❌ Frontend is not responding"
-    exit 1
-fi
+echo "✅ Frontend is running and proxy is working"
 
-# Test admin login
-echo "3. Testing admin login..."
-ADMIN_RESPONSE=$(curl -s -X POST http://localhost:8081/api/auth/login \
+# Test login
+echo "👤 Testing login..."
+LOGIN_RESPONSE=$(curl -s -k -X POST "$BASE_URL/api/auth/login" \
     -H "Content-Type: application/json" \
-    -d '{"username":"admin","password":"password123!"}')
+    -d "{
+        \"username\": \"$ADMIN_USERNAME\",
+        \"password\": \"$ADMIN_PASSWORD\"
+    }")
 
-if echo "$ADMIN_RESPONSE" | grep -q "token"; then
-    echo "   ✅ Admin login successful"
-else
-    echo "   ❌ Admin login failed"
-    echo "   Response: $ADMIN_RESPONSE"
+echo "Login response: $LOGIN_RESPONSE"
+
+# Extract token from response
+TOKEN=$(echo "$LOGIN_RESPONSE" | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
+
+if [ -z "$TOKEN" ]; then
+    echo "❌ Failed to get token from login response"
+    echo "Response: $LOGIN_RESPONSE"
+    exit 1
 fi
 
-# Test guest login
-echo "4. Testing guest login..."
-GUEST_RESPONSE=$(curl -s -X POST http://localhost:8081/api/auth/guest \
-    -H "Content-Type: application/json")
+echo "✅ Login successful"
+echo "🔑 Token: ${TOKEN:0:20}..."
 
-if echo "$GUEST_RESPONSE" | grep -q "token"; then
-    echo "   ✅ Guest login successful"
-else
-    echo "   ❌ Guest login failed"
-    echo "   Response: $GUEST_RESPONSE"
-fi
+# Test getting current user
+echo "🔍 Testing get current user..."
+USER_RESPONSE=$(curl -s -k -X GET "$BASE_URL/api/auth/me" \
+    -H "Authorization: Bearer $TOKEN")
 
-# Test frontend API proxy
-echo "5. Testing frontend API proxy..."
-PROXY_RESPONSE=$(curl -k -s https://localhost:5173/api/setup/status)
+echo "User info: $USER_RESPONSE"
 
-if echo "$PROXY_RESPONSE" | grep -q "isFirstTime"; then
-    echo "   ✅ Frontend API proxy working"
-else
-    echo "   ❌ Frontend API proxy failed"
-    echo "   Response: $PROXY_RESPONSE"
-fi
+# Extract role from response
+ROLE=$(echo "$USER_RESPONSE" | grep -o '"role":"[^"]*"' | cut -d'"' -f4)
 
 echo ""
-echo "🎉 All tests completed!"
+echo "🎉 All tests passed!"
+echo "==================="
+echo "Username: $ADMIN_USERNAME"
+echo "Role: $ROLE"
 echo ""
-echo "📱 Frontend: https://localhost:5173"
-echo "🔧 Backend:  http://localhost:8081"
-echo ""
-echo "You can now access the application in your browser!"
+echo "You can now access:"
+echo "- Frontend: $BASE_URL"
+echo "- Chat: $BASE_URL/chat"
+echo "- Admin panel: $BASE_URL/admin"

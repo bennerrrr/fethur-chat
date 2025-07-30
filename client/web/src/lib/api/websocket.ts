@@ -3,7 +3,8 @@ import { browser } from '$app/environment';
 const { PUBLIC_WS_URL } = import.meta.env;
 import type { WebSocketEvent, TypingEvent, MessageEvent, UserEvent } from '$lib/types';
 
-const WS_BASE_URL = PUBLIC_WS_URL || 'ws://localhost:8081';
+// Use relative URLs in browser to leverage Vite's proxy, fallback to direct URL
+const WS_BASE_URL = browser ? '' : (PUBLIC_WS_URL || 'ws://localhost:8081');
 
 type EventHandler<T = unknown> = (data: T) => void;
 
@@ -51,7 +52,8 @@ class WebSocketClient {
 		return new Promise((resolve, reject) => {
 			try {
 				this.isConnectingState = true;
-				const wsUrl = `${this.url}/ws?token=${encodeURIComponent(token)}`;
+				// Use full HTTPS URL in browser to leverage Vite's proxy
+				const wsUrl = browser ? `wss://localhost:5173/ws?token=${encodeURIComponent(token)}` : `${this.url}/ws?token=${encodeURIComponent(token)}`;
 				this.ws = new WebSocket(wsUrl);
 
 				this.ws.onopen = () => {
@@ -133,24 +135,47 @@ class WebSocketClient {
 		try {
 			const data = JSON.parse(event.data);
 			
-			// Handle different message types
+			// Handle different message types based on backend format
 			switch (data.type) {
-				case 'message_created':
-				case 'message_updated':
-				case 'message_deleted':
-					this.emit('message', data as MessageEvent);
+				case 'text':
+					// Text message from backend
+					this.emit('message', {
+						type: 'message_created',
+						message: {
+							id: data.data?.id || Date.now(), // Use actual ID from backend
+							content: data.content,
+							channel_id: data.channel_id,
+							author: {
+								id: data.user_id,
+								username: data.username
+							},
+							created_at: data.timestamp,
+							updated_at: data.timestamp
+						}
+					} as MessageEvent);
 					break;
 				
-				case 'user_joined':
-				case 'user_left':
-				case 'user_online':
-				case 'user_offline':
-					this.emit('user', data as UserEvent);
+				case 'join':
+				case 'leave':
+					// User joined/left channel
+					this.emit('user', {
+						type: data.type === 'join' ? 'user_joined' : 'user_left',
+						user: {
+							id: data.user_id,
+							username: data.username
+						},
+						channel_id: data.channel_id
+					} as UserEvent);
 					break;
 				
-				case 'typing_start':
-				case 'typing_stop':
-					this.emit('typing', data as TypingEvent);
+				case 'typing':
+				case 'stop_typing':
+					// Typing indicators
+					this.emit('typing', {
+						userId: data.user_id,
+						channelId: data.channel_id,
+						isTyping: data.type === 'typing'
+					} as TypingEvent);
 					break;
 				
 				case 'heartbeat':
@@ -186,12 +211,10 @@ class WebSocketClient {
 	sendMessage(channelId: number, content: string, replyToId?: number): void {
 		if (this.ws?.readyState === WebSocket.OPEN) {
 			const message = {
-				type: 'send_message',
-				data: {
-					channelId,
-					content,
-					replyToId
-				}
+				type: 'text',
+				channel_id: channelId,
+				content: content,
+				reply_to_id: replyToId
 			};
 			this.ws.send(JSON.stringify(message));
 		}
@@ -200,8 +223,8 @@ class WebSocketClient {
 	joinChannel(channelId: number): void {
 		if (this.ws?.readyState === WebSocket.OPEN) {
 			const message = {
-				type: 'join_channel',
-				data: { channelId }
+				type: 'join',
+				channel_id: channelId
 			};
 			this.ws.send(JSON.stringify(message));
 		}
@@ -210,8 +233,8 @@ class WebSocketClient {
 	leaveChannel(channelId: number): void {
 		if (this.ws?.readyState === WebSocket.OPEN) {
 			const message = {
-				type: 'leave_channel',
-				data: { channelId }
+				type: 'leave',
+				channel_id: channelId
 			};
 			this.ws.send(JSON.stringify(message));
 		}
@@ -220,8 +243,8 @@ class WebSocketClient {
 	startTyping(channelId: number): void {
 		if (this.ws?.readyState === WebSocket.OPEN) {
 			const message = {
-				type: 'typing_start',
-				data: { channelId }
+				type: 'typing',
+				channel_id: channelId
 			};
 			this.ws.send(JSON.stringify(message));
 		}
@@ -230,8 +253,8 @@ class WebSocketClient {
 	stopTyping(channelId: number): void {
 		if (this.ws?.readyState === WebSocket.OPEN) {
 			const message = {
-				type: 'typing_stop',
-				data: { channelId }
+				type: 'stop_typing',
+				channel_id: channelId
 			};
 			this.ws.send(JSON.stringify(message));
 		}
