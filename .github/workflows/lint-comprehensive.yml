@@ -1,0 +1,387 @@
+name: Comprehensive Linting
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  GO_VERSION: '1.24'
+  NODE_VERSION: '20'
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+  actions: read
+
+jobs:
+  go-lint:
+    name: Go Linting & Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Install additional tools
+        run: |
+          go install github.com/fzipp/gocyclo/cmd/gocyclo@latest
+          go install github.com/client9/misspell/cmd/misspell@latest
+          go install mvdan.cc/gofumpt@latest
+          go install golang.org/x/tools/cmd/goimports@latest
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          working-directory: ./server
+          args: --timeout=10m --issues-exit-code=0 --out-format=github-actions,json:golangci-lint-report.json,junit-xml:golangci-lint-report.xml
+
+      - name: Upload Go lint results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: go-lint-results
+          path: |
+            server/golangci-lint-report.json
+            server/golangci-lint-report.xml
+
+      - name: Code complexity analysis
+        run: |
+          cd server
+          echo "## 📊 Code Complexity Analysis" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          gocyclo -over 10 . | head -20 >> $GITHUB_STEP_SUMMARY || echo "No high complexity functions found" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+      - name: Check spelling
+        run: |
+          cd server
+          echo "## 📝 Spelling Check" >> $GITHUB_STEP_SUMMARY
+          if misspell -error .; then
+            echo "✅ No spelling errors found" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Spelling errors detected" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Generate Go lint summary
+        if: always()
+        run: |
+          cd server
+          echo "## 🔍 Go Linting Summary" >> $GITHUB_STEP_SUMMARY
+          if [ -f golangci-lint-report.json ]; then
+            issues=$(jq '.Issues | length' golangci-lint-report.json 2>/dev/null || echo "0")
+            echo "- **Total Issues:** $issues" >> $GITHUB_STEP_SUMMARY
+            
+            if [ "$issues" -gt 0 ]; then
+              echo "- **Issues by Severity:**" >> $GITHUB_STEP_SUMMARY
+              jq -r '.Issues | group_by(.Severity) | .[] | "  - \(.[0].Severity): \(length)"' golangci-lint-report.json >> $GITHUB_STEP_SUMMARY 2>/dev/null || true
+              
+              echo "- **Top Issues:**" >> $GITHUB_STEP_SUMMARY
+              jq -r '.Issues | group_by(.FromLinter) | sort_by(-length) | .[:5] | .[] | "  - \(.[0].FromLinter): \(length) issues"' golangci-lint-report.json >> $GITHUB_STEP_SUMMARY 2>/dev/null || true
+            fi
+          fi
+
+  frontend-lint:
+    name: Frontend Linting & Analysis
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client/web
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type checking
+        run: |
+          echo "## 🔷 TypeScript Analysis" >> $GITHUB_STEP_SUMMARY
+          if pnpm type-check; then
+            echo "✅ TypeScript compilation successful" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ TypeScript compilation failed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Svelte type checking
+        run: |
+          echo "## 🟠 Svelte Analysis" >> $GITHUB_STEP_SUMMARY
+          if pnpm check; then
+            echo "✅ Svelte type checking successful" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Svelte type checking failed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: ESLint analysis
+        run: |
+          pnpm lint:ci || true
+          echo "## 🔍 ESLint Analysis" >> $GITHUB_STEP_SUMMARY
+          if [ -f eslint-report.json ]; then
+            total_issues=$(jq '[.[] | .messages | length] | add' eslint-report.json 2>/dev/null || echo "0")
+            total_files=$(jq 'length' eslint-report.json 2>/dev/null || echo "0")
+            
+            echo "- **Total Files Checked:** $total_files" >> $GITHUB_STEP_SUMMARY
+            echo "- **Total Issues:** $total_issues" >> $GITHUB_STEP_SUMMARY
+            
+            if [ "$total_issues" -gt 0 ]; then
+              echo "- **Issues by Severity:**" >> $GITHUB_STEP_SUMMARY
+              errors=$(jq '[.[] | .messages[] | select(.severity == 2)] | length' eslint-report.json 2>/dev/null || echo "0")
+              warnings=$(jq '[.[] | .messages[] | select(.severity == 1)] | length' eslint-report.json 2>/dev/null || echo "0")
+              echo "  - Errors: $errors" >> $GITHUB_STEP_SUMMARY
+              echo "  - Warnings: $warnings" >> $GITHUB_STEP_SUMMARY
+              
+              echo "- **Top Rule Violations:**" >> $GITHUB_STEP_SUMMARY
+              jq -r '[.[] | .messages[] | .ruleId] | group_by(.) | sort_by(-length) | .[:5] | .[] | "  - \(.[0]): \(length) occurrences"' eslint-report.json >> $GITHUB_STEP_SUMMARY 2>/dev/null || true
+            fi
+          fi
+
+      - name: Prettier format check
+        run: |
+          echo "## 💅 Code Formatting" >> $GITHUB_STEP_SUMMARY
+          if pnpm format:check; then
+            echo "✅ All files are properly formatted" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Some files need formatting" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload frontend lint results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: frontend-lint-results
+          path: |
+            client/web/eslint-report.json
+
+  security-lint:
+    name: Security Linting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Security summary
+        run: |
+          echo "## 🔒 Security Analysis" >> $GITHUB_STEP_SUMMARY
+          if [ -f trivy-results.sarif ]; then
+            critical=$(jq '[.runs[].results[] | select(.level == "error")] | length' trivy-results.sarif 2>/dev/null || echo "0")
+            high=$(jq '[.runs[].results[] | select(.level == "warning")] | length' trivy-results.sarif 2>/dev/null || echo "0")
+            medium=$(jq '[.runs[].results[] | select(.level == "note")] | length' trivy-results.sarif 2>/dev/null || echo "0")
+            
+            echo "- **Critical:** $critical" >> $GITHUB_STEP_SUMMARY
+            echo "- **High:** $high" >> $GITHUB_STEP_SUMMARY
+            echo "- **Medium:** $medium" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- No security issues detected" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  auto-fix:
+    name: Auto-fix Issues
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    needs: [go-lint, frontend-lint]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ github.head_ref }}
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - name: Install Go formatting tools
+        run: |
+          go install mvdan.cc/gofumpt@latest
+          go install golang.org/x/tools/cmd/goimports@latest
+
+      - name: Auto-fix Go formatting
+        run: |
+          cd server
+          gofumpt -w .
+          goimports -w .
+
+      - name: Install frontend dependencies
+        run: |
+          cd client/web
+          pnpm install --frozen-lockfile
+
+      - name: Auto-fix frontend issues
+        run: |
+          cd client/web
+          pnpm lint:fix || true
+          pnpm format
+
+      - name: Check for changes
+        id: verify-changed-files
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "## 🔧 Auto-fix Applied" >> $GITHUB_STEP_SUMMARY
+            echo "The following files were automatically fixed:" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            git status --porcelain >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "## ✅ No Auto-fixes Needed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Commit auto-fixes
+        if: steps.verify-changed-files.outputs.changed == 'true'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add .
+          git commit -m "🔧 Auto-fix linting issues [skip ci]" || exit 0
+          git push
+
+  lint-report:
+    name: Generate Lint Report
+    runs-on: ubuntu-latest
+    needs: [go-lint, frontend-lint, security-lint]
+    if: always()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Generate comprehensive report
+        run: |
+          echo "# 📋 Comprehensive Lint Report" > lint-report.md
+          echo "" >> lint-report.md
+          echo "**Repository:** ${{ github.repository }}" >> lint-report.md
+          echo "**Branch:** ${{ github.ref_name }}" >> lint-report.md
+          echo "**Commit:** ${{ github.sha }}" >> lint-report.md
+          echo "**Run:** [${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> lint-report.md
+          echo "" >> lint-report.md
+          
+          # Go lint summary
+          if [ -f go-lint-results/golangci-lint-report.json ]; then
+            echo "## 🐹 Go Linting Results" >> lint-report.md
+            issues=$(jq '.Issues | length' go-lint-results/golangci-lint-report.json 2>/dev/null || echo "0")
+            if [ "$issues" -eq 0 ]; then
+              echo "✅ No issues found" >> lint-report.md
+            else
+              echo "❌ $issues issues found" >> lint-report.md
+            fi
+            echo "" >> lint-report.md
+          fi
+          
+          # Frontend lint summary
+          if [ -f frontend-lint-results/eslint-report.json ]; then
+            echo "## 🌐 Frontend Linting Results" >> lint-report.md
+            total_issues=$(jq '[.[] | .messages | length] | add' frontend-lint-results/eslint-report.json 2>/dev/null || echo "0")
+            if [ "$total_issues" -eq 0 ]; then
+              echo "✅ No issues found" >> lint-report.md
+            else
+              echo "❌ $total_issues issues found" >> lint-report.md
+            fi
+            echo "" >> lint-report.md
+          fi
+
+      - name: Comment PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('lint-report.md', 'utf8');
+            
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            
+            const botComment = comments.data.find(comment => 
+              comment.user.type === 'Bot' && 
+              comment.body.includes('📋 Comprehensive Lint Report')
+            );
+            
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: report
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: report
+              });
+            }
+
+      - name: Upload comprehensive report
+        uses: actions/upload-artifact@v4
+        with:
+          name: comprehensive-lint-report
+          path: lint-report.md

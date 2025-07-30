@@ -1,21 +1,285 @@
 version: "2"
 
 run:
-  timeout: 5m
+  timeout: 10m
   go: '1.24'
+  tests: false
+  skip-dirs:
+    - vendor
+    - testdata
+    - examples
+  skip-files:
+    - ".*\\.pb\\.go$"
+    - ".*_generated\\.go$"
+  modules-download-mode: readonly
+
+output:
+  formats:
+    - format: colored-line-number
+    - format: json:golangci-lint-report.json
+    - format: junit-xml:golangci-lint-report.xml
+    - format: github-actions
+  print-issued-lines: true
+  print-linter-name: true
+  uniq-by-line: false
+  sort-results: true
 
 linters:
   enable:
+    # Style & Formatting
+    - gofmt
+    - goimports
+    - gofumpt
+    - whitespace
+    - wsl
+    
+    # Bugs & Logic
     - govet
     - errcheck
     - ineffassign
     - unused
-    - misspell
-    - gosec
-  disable:
+    - deadcode
+    - varcheck
+    - structcheck
+    - typecheck
+    - gosimple
     - staticcheck
+    
+    # Performance
+    - prealloc
+    - maligned
+    
+    # Security
+    - gosec
+    - gas
+    
+    # Code Quality
+    - gocyclo
+    - gocognit
+    - funlen
+    - lll
+    - nestif
+    - goconst
+    - misspell
+    - unparam
+    - nakedret
+    - gocritic
+    - revive
+    - exportloopref
+    - scopelint
+    
+    # Documentation
+    - godot
+    - godox
+    
+    # Imports
+    - gci
+    - depguard
+    
+    # Interfaces
+    - interfacer
+    
+    # Test Quality
+    - testpackage
+    - tparallel
+    - paralleltest
+    
+  disable:
+    - exhaustivestruct  # Too noisy for this project
+    - exhaustive       # Can be overwhelming
+    - wrapcheck        # Not always practical
+    - nlreturn        # Conflicting with other rules
 
-formatters:
-  enable:
-    - gofmt
-    - goimports 
+linters-settings:
+  gofmt:
+    simplify: true
+  
+  goimports:
+    local-prefixes: github.com/yourusername/fethur
+  
+  gofumpt:
+    extra-rules: true
+  
+  gocyclo:
+    min-complexity: 15
+  
+  gocognit:
+    min-complexity: 20
+  
+  funlen:
+    lines: 100
+    statements: 50
+  
+  lll:
+    line-length: 120
+    tab-width: 4
+  
+  nestif:
+    min-complexity: 4
+  
+  goconst:
+    min-len: 3
+    min-occurrences: 3
+    ignore-tests: true
+  
+  misspell:
+    locale: US
+    ignore-words:
+      - cancelled
+  
+  unparam:
+    check-exported: false
+  
+  nakedret:
+    max-func-lines: 30
+  
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - experimental
+      - opinionated
+      - performance
+      - style
+    disabled-checks:
+      - dupImport # https://github.com/go-critic/go-critic/issues/845
+      - ifElseChain
+      - octalLiteral
+      - whyNoLint
+      - wrapperFunc
+  
+  revive:
+    rules:
+      - name: exported
+        arguments: [true, true, true]
+      - name: unused-parameter
+      - name: unreachable-code
+      - name: redefines-builtin-id
+      - name: superfluous-else
+      - name: var-naming
+      - name: var-declaration
+      - name: package-comments
+      - name: range-val-in-closure
+      - name: range-val-address
+      - name: waitgroup-by-value
+      - name: atomic
+      - name: empty-block
+      - name: call-to-gc
+      - name: duplicated-imports
+      - name: import-shadowing
+      - name: bare-return
+      - name: unused-receiver
+      - name: unhandled-error
+      - name: cognitive-complexity
+        arguments: [20]
+  
+  gosec:
+    severity: medium
+    confidence: medium
+    excludes:
+      - G204  # Subprocess launched with variable
+      - G304  # File path provided as taint input
+    
+  depguard:
+    rules:
+      main:
+        deny:
+          - pkg: "github.com/pkg/errors"
+            desc: Should be replaced by standard lib errors package
+          - pkg: "github.com/sirupsen/logrus"
+            desc: Should use structured logging with slog
+        
+  godot:
+    scope: declarations
+    exclude:
+      - "^fixme:"
+      - "^todo:"
+    period: true
+    capital: false
+    
+  godox:
+    keywords:
+      - NOTE
+      - OPTIMIZE
+      - HACK
+      - TODO
+      - BUG
+      - FIXME
+    
+  gci:
+    sections:
+      - standard
+      - default
+      - prefix(github.com/yourusername/fethur)
+      - blank
+      - dot
+    skip-generated: true
+    custom-order: true
+
+issues:
+  exclude-rules:
+    # Exclude some linters from running on tests files
+    - path: _test\.go
+      linters:
+        - gocyclo
+        - errcheck
+        - dupl
+        - gosec
+        - funlen
+        - goconst
+        - gocognit
+        - scopelint
+        - lll
+    
+    # Exclude known linter issues
+    - path: internal/wire_gen.go
+      linters:
+        - deadcode
+        - unused
+        - varcheck
+    
+    # Exclude shadow warnings in type switches
+    - text: "shadow: declaration of \"err\""
+      linters:
+        - govet
+    
+    # Exclude certain godot messages
+    - text: "Comment should end in a period"
+      linters:
+        - godot
+      path: cmd/
+  
+  exclude-use-default: false
+  exclude-case-sensitive: false
+  include:
+    - EXC0002 # disable excluding of issues about comments from golint
+    - EXC0003 # disable excluding of issues about function/method names
+    - EXC0004 # disable excluding of issues about variable names like 'myVar'
+    - EXC0005 # disable excluding of issues about printf
+    - EXC0011 # disable excluding of issues about math.Inf
+    - EXC0012 # disable excluding of issues about http.NoBody
+    - EXC0013 # disable excluding of issues about empty blocks
+    - EXC0014 # disable excluding of issues about "fmt.Errorf can be replaced with errors.New"
+    - EXC0015 # disable excluding of issues about "fmt.Sprintf can be replaced with string concatenation"
+  
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  new: false
+  fix: false
+
+severity:
+  default-severity: error
+  case-sensitive: false
+  rules:
+    - linters:
+        - revive
+        - gocritic
+        - godot
+        - godox
+      severity: warning
+    - linters:
+        - errcheck
+        - gosec
+        - govet
+        - staticcheck
+        - typecheck
+      severity: error 
