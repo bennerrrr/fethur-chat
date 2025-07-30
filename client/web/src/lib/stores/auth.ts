@@ -41,9 +41,12 @@ export const authActions = {
 		authStore.update(state => ({ ...state, isLoading: true }));
 
 		try {
-			const token = localStorage.getItem('token');
+			const token = localStorage.getItem('auth_token');
 			
 			if (token) {
+				// Set token in API client first
+				apiClient.setToken(token);
+				
 				// Verify token is still valid by fetching current user
 				const user = await apiClient.getCurrentUser();
 				
@@ -97,6 +100,11 @@ export const authActions = {
 				error: null
 			}));
 
+			// Store token in localStorage
+			if (browser) {
+				localStorage.setItem('auth_token', authResponse.token);
+			}
+
 			// Connect WebSocket
 			await wsClient.connect(authResponse.token);
 		} catch (error) {
@@ -129,6 +137,11 @@ export const authActions = {
 				error: null
 			}));
 
+			// Store token in localStorage
+			if (browser) {
+				localStorage.setItem('auth_token', authResponse.token);
+			}
+
 			// Connect WebSocket
 			await wsClient.connect(authResponse.token);
 		} catch (error) {
@@ -159,15 +172,17 @@ export const authActions = {
 		} catch (error) {
 			console.warn('Logout API call failed:', error);
 		} finally {
-					// Clear local state regardless of API call result
-		localStorage.removeItem('token');
-		authStore.update(state => ({
-			...state,
-			user: null,
-			token: null,
-			isLoading: false,
-			error: null
-		}));
+			// Clear local state regardless of API call result
+			if (browser) {
+				localStorage.removeItem('auth_token');
+			}
+			authStore.update(state => ({
+				...state,
+				user: null,
+				token: null,
+				isLoading: false,
+				error: null
+			}));
 		}
 	},
 

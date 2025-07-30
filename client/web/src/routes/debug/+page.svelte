@@ -15,7 +15,7 @@
 		if (!browser) return;
 
 		// Get token from localStorage
-		debugInfo.token = localStorage.getItem('token') || 'No token found';
+		debugInfo.token = localStorage.getItem('auth_token') || 'No token found';
 
 		try {
 			// Test backend health
@@ -41,21 +41,13 @@
 
 	async function testLogin() {
 		try {
-			const response = await fetch('http://192.168.1.23:8081/api/auth/login', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					username: 'testuser',
-					password: 'password123!'
-				})
-			});
-			const data = await response.json();
-			if (data.token) {
-				localStorage.setItem('token', data.token);
-				debugInfo.token = data.token;
+			const response = await apiClient.login({ username: 'admin', password: 'password123!' });
+			if (response.token) {
+				localStorage.setItem('auth_token', response.token);
+				debugInfo.token = response.token;
 				window.location.reload();
 			} else {
-				debugInfo.error = data.error || 'Login failed';
+				debugInfo.error = 'Login failed';
 			}
 		} catch (err: any) {
 			debugInfo.error = err.message || 'Unknown error';
@@ -64,21 +56,13 @@
 
 	async function testSuperAdminLogin() {
 		try {
-			const response = await fetch('http://192.168.1.23:8081/api/auth/login', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					username: 'superadmin',
-					password: 'password123!'
-				})
-			});
-			const data = await response.json();
-			if (data.token) {
-				localStorage.setItem('token', data.token);
-				debugInfo.token = data.token;
+			const response = await apiClient.login({ username: 'admin', password: 'password123!' });
+			if (response.token) {
+				localStorage.setItem('token', response.token);
+				debugInfo.token = response.token;
 				window.location.reload();
 			} else {
-				debugInfo.error = data.error || 'Superadmin login failed';
+				debugInfo.error = 'Superadmin login failed';
 			}
 		} catch (err: any) {
 			debugInfo.error = err.message || 'Unknown error';

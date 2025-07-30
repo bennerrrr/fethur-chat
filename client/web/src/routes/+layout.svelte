@@ -20,7 +20,7 @@
 			const unsubscribe = authStore.subscribe(async (auth) => {
 				if (!auth.isInitialized) return;
 				
-				const token = localStorage.getItem('token');
+				const token = localStorage.getItem('auth_token');
 				const currentPath = $page.url.pathname;
 				
 				// Handle authentication state changes
