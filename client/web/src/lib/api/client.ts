@@ -79,31 +79,87 @@ class ApiClient {
 
 	// Authentication methods
 	async login(credentials: LoginRequest): Promise<AuthResponse> {
-		const response = await this.request<AuthResponse>('/api/auth/login', {
-			method: 'POST',
-			body: JSON.stringify(credentials)
-		});
+		const url = `${this.baseUrl}/api/auth/login`;
+		const headers: Record<string, string> = {
+			'Content-Type': 'application/json'
+		};
 
-		if (response.success && response.data) {
-			this.setToken(response.data.token);
-			return response.data;
+		if (this.token) {
+			headers['Authorization'] = `Bearer ${this.token}`;
 		}
 
-		throw new ApiError(401, response.error || 'Login failed');
+		try {
+			const response = await fetch(url, {
+				method: 'POST',
+				headers,
+				body: JSON.stringify(credentials)
+			});
+
+			const data = await response.json();
+
+			if (!response.ok) {
+				throw new ApiError(response.status, data.error || data.message || 'Request failed', data);
+			}
+
+			// Backend returns {token, user} directly
+			if (data && data.token && data.user) {
+				this.setToken(data.token);
+				return {
+					token: data.token,
+					user: data.user,
+					expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours from now
+				};
+			}
+
+			throw new ApiError(401, 'Login failed');
+		} catch (error) {
+			if (error instanceof ApiError) {
+				throw error;
+			}
+			throw new ApiError(0, 'Network error or server unavailable');
+		}
 	}
 
 	async register(userData: RegisterRequest): Promise<AuthResponse> {
-		const response = await this.request<AuthResponse>('/api/auth/register', {
-			method: 'POST',
-			body: JSON.stringify(userData)
-		});
+		const url = `${this.baseUrl}/api/auth/register`;
+		const headers: Record<string, string> = {
+			'Content-Type': 'application/json'
+		};
 
-		if (response.success && response.data) {
-			this.setToken(response.data.token);
-			return response.data;
+		if (this.token) {
+			headers['Authorization'] = `Bearer ${this.token}`;
 		}
 
-		throw new ApiError(400, response.error || 'Registration failed');
+		try {
+			const response = await fetch(url, {
+				method: 'POST',
+				headers,
+				body: JSON.stringify(userData)
+			});
+
+			const data = await response.json();
+
+			if (!response.ok) {
+				throw new ApiError(response.status, data.error || data.message || 'Request failed', data);
+			}
+
+			// Backend returns {token, user} directly
+			if (data && data.token && data.user) {
+				this.setToken(data.token);
+				return {
+					token: data.token,
+					user: data.user,
+					expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours from now
+				};
+			}
+
+			throw new ApiError(400, 'Registration failed');
+		} catch (error) {
+			if (error instanceof ApiError) {
+				throw error;
+			}
+			throw new ApiError(0, 'Network error or server unavailable');
+		}
 	}
 
 	async logout(): Promise<void> {
@@ -290,6 +346,43 @@ class ApiClient {
 		}
 
 		throw new ApiError(400, 'Failed to send message');
+	}
+
+	async editMessage(messageId: number, content: string): Promise<Message> {
+		const response = await this.request<{ data: any }>(`/api/messages/${messageId}`, {
+			method: 'PUT',
+			body: JSON.stringify({ content })
+		}) as any;
+
+		if (response && response.data) {
+			return {
+				id: response.data.id,
+				content: response.data.content,
+				authorId: response.data.user_id,
+				author: {
+					id: response.data.user_id,
+					username: response.data.username,
+					email: '',
+					isOnline: true,
+					createdAt: new Date()
+				},
+				channelId: response.data.channel_id,
+				createdAt: new Date(response.data.created_at),
+				isEdited: true
+			};
+		}
+
+		throw new ApiError(400, 'Failed to edit message');
+	}
+
+	async deleteMessage(messageId: number): Promise<void> {
+		const response = await this.request<{ success: boolean }>(`/api/messages/${messageId}`, {
+			method: 'DELETE'
+		}) as any;
+
+		if (!response || !response.success) {
+			throw new ApiError(400, 'Failed to delete message');
+		}
 	}
 
 	// Health check

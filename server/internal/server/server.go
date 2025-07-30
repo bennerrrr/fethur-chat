@@ -55,7 +55,7 @@ func New(db *database.Database, auth *auth.Service) *Server {
 func (s *Server) setupRoutes() {
 	// Add CORS middleware
 	config := cors.DefaultConfig()
-	config.AllowOrigins = []string{"http://localhost:5173", "http://127.0.0.1:5173", "http://192.168.1.23:5173"}
+	config.AllowOrigins = []string{"http://localhost:5173", "https://localhost:5173", "http://127.0.0.1:5173", "https://127.0.0.1:5173", "http://192.168.1.23:5173", "https://192.168.1.23:5173"}
 	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
 	config.AllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization"}
 	config.AllowCredentials = true

@@ -8,49 +8,86 @@
 	import ErrorBoundary from '$lib/components/ui/ErrorBoundary.svelte';
 
 	let initialized = false;
+	let lastNavigationTime = 0;
+	let isNavigating = false;
 
 	onMount(async () => {
 		if (!browser) return;
 
+		console.log('🔧 Layout: Starting initialization...');
 		try {
 			// Initialize auth store
+			console.log('🔧 Layout: Calling authActions.initialize()...');
 			await authActions.initialize();
+			console.log('🔧 Layout: Auth store initialized');
 			
 			// Set up auth state subscription
 			const unsubscribe = authStore.subscribe(async (auth) => {
-				if (!auth.isInitialized) return;
+				console.log('🔧 Layout: Auth state changed:', { 
+					isInitialized: auth.isInitialized, 
+					hasUser: !!auth.user, 
+					hasToken: !!auth.token,
+					path: $page.url.pathname 
+				});
 				
-				const token = localStorage.getItem('auth_token');
+				if (!auth.isInitialized || isNavigating) {
+					console.log('🔧 Layout: Auth not initialized or already navigating, skipping...');
+					return;
+				}
+				
+				// Prevent excessive navigation calls
+				const now = Date.now();
+				if (now - lastNavigationTime < 1000) {
+					console.log('🔧 Layout: Navigation throttled, skipping...');
+					return;
+				}
+				
 				const currentPath = $page.url.pathname;
 				
 				// Handle authentication state changes
 				if (auth.user && auth.token) {
+					console.log('🔧 Layout: User is authenticated, setting token and checking redirects');
 					// User is authenticated
 					apiClient.setToken(auth.token);
 					
 					// Redirect from auth pages to appropriate destination
 					if (currentPath === '/' || currentPath === '/login' || currentPath === '/register') {
+						isNavigating = true;
+						lastNavigationTime = now;
+						
 						if (auth.user.role === 'admin' || auth.user.role === 'super_admin') {
-							goto('/admin');
+							console.log('🔧 Layout: Redirecting admin to /admin');
+							await goto('/admin', { replaceState: true });
 						} else {
-							goto('/chat');
+							console.log('🔧 Layout: Redirecting user to /chat');
+							await goto('/chat', { replaceState: true });
 						}
+						
+						isNavigating = false;
 					}
 				} else {
+					console.log('🔧 Layout: User is not authenticated, clearing token and checking redirects');
 					// User is not authenticated
 					apiClient.clearToken();
 					
 					// Redirect from protected pages to login
 					const protectedRoutes = ['/chat', '/admin', '/dashboard'];
 					if (protectedRoutes.includes(currentPath)) {
-						goto('/');
+						isNavigating = true;
+						lastNavigationTime = now;
+						
+						console.log('🔧 Layout: Redirecting from protected page to /');
+						await goto('/', { replaceState: true });
+						
+						isNavigating = false;
 					}
 				}
 			});
 			
 			initialized = true;
+			console.log('🔧 Layout: Initialization complete');
 		} catch (error) {
-			console.error('Layout initialization failed:', error);
+			console.error('🔧 Layout: Initialization failed:', error);
 		}
 	});
 </script>

@@ -38,7 +38,7 @@
 	onMount(async () => {
 		if (!browser) return;
 		
-		const token = localStorage.getItem('token');
+		const token = localStorage.getItem('auth_token');
 		console.log('Admin page - Token:', token ? 'Present' : 'Missing');
 		
 		if (!token) {

@@ -11,7 +11,7 @@
 	onMount(async () => {
 		if (!browser) return;
 		
-		token = localStorage.getItem('token') || 'No token';
+		token = localStorage.getItem('auth_token') || 'No token';
 		console.log('Token:', token);
 		
 		if (token !== 'No token') {

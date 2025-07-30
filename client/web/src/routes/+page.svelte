@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { browser } from '$app/environment';
 	import { apiClient } from '$lib/api/client';
+	import { authActions, authStore } from '$lib/stores/auth';
 
 	let isFirstTime = false;
 	let currentStep = 1;
@@ -43,30 +44,38 @@
 
 	let error = '';
 	let success = '';
+	
+	// Subscribe to auth store for errors
+	$: authStore.subscribe(($auth) => {
+		if ($auth.error && $auth.error !== error) {
+			error = $auth.error;
+		}
+	});
 
 	onMount(async () => {
 		if (!browser) return;
 		
 		try {
-			// First, check if user is already authenticated
-			const token = localStorage.getItem('token');
-			if (token) {
-				apiClient.setToken(token);
-				try {
-					const user = await apiClient.getCurrentUser();
-					console.log('User already authenticated:', user);
-					// Redirect to appropriate page based on user role
-					if (user.role === 'admin' || user.role === 'super_admin') {
-						goto('/admin');
-					} else {
-						goto('/chat');
+			// Initialize auth store
+			await authActions.initialize();
+			
+			// Subscribe to auth store changes
+			const unsubscribe = authStore.subscribe(($auth) => {
+				if ($auth.isInitialized) {
+					authChecking = false;
+					
+					if ($auth.user && $auth.token) {
+						console.log('User already authenticated:', $auth.user);
+						// Redirect to appropriate page based on user role
+						if ($auth.user.role === 'admin' || $auth.user.role === 'super_admin') {
+							goto('/admin');
+						} else {
+							goto('/chat');
+						}
+						return;
 					}
-					return;
-				} catch (err) {
-					console.log('Token invalid, clearing and continuing...');
-					localStorage.removeItem('token');
 				}
-			}
+			});
 
 			// Check if this is first time setup
 			const response = await fetch('/api/setup/status');
@@ -77,7 +86,6 @@
 			isFirstTime = true; // Default to setup mode if error
 		} finally {
 			loading = false;
-			authChecking = false;
 		}
 	});
 
@@ -119,41 +127,29 @@
 
 	async function handleLogin() {
 		try {
-			const response = await fetch('/api/auth/login', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify(loginData)
-			});
-
-			if (response.ok) {
-				const data = await response.json();
-				localStorage.setItem('token', data.token);
-				apiClient.setToken(data.token);
-				
-				// Get user info to determine redirect
-				try {
-					const user = await apiClient.getCurrentUser();
-					if (user.role === 'admin' || user.role === 'super_admin') {
+			error = '';
+			await authActions.login(loginData.username, loginData.password);
+			
+			// Get current auth state to determine redirect
+			authStore.subscribe(($auth) => {
+				if ($auth.user && $auth.token) {
+					if ($auth.user.role === 'admin' || $auth.user.role === 'super_admin') {
 						goto('/admin');
 					} else {
 						goto('/chat');
 					}
-				} catch (err) {
-					goto('/chat'); // Fallback
 				}
-			} else {
-				const data = await response.json();
-				error = data.error || 'Login failed';
-			}
+			})();
 		} catch (err) {
-			error = 'Login failed';
+			console.error('Login error:', err);
+			error = err instanceof Error ? err.message : 'Login failed';
 		}
 	}
 
 	async function handleGuestLogin() {
 		try {
+			error = '';
+			// For guest login, we'll use the API client directly since it's not in the auth store
 			const response = await fetch('/api/auth/guest', {
 				method: 'POST',
 				headers: {
@@ -164,14 +160,30 @@
 
 			if (response.ok) {
 				const data = await response.json();
-				localStorage.setItem('token', data.token);
+				// Set token in auth store manually
+				authStore.update(state => ({
+					...state,
+					user: data.user,
+					token: data.token,
+					isLoading: false,
+					error: null
+				}));
+				
+				// Store token in localStorage
+				if (browser) {
+					localStorage.setItem('auth_token', data.token);
+				}
+				
+				// Set token in API client
 				apiClient.setToken(data.token);
+				
 				goto('/chat');
 			} else {
 				const data = await response.json();
 				error = data.error || 'Guest login failed';
 			}
 		} catch (err) {
+			console.error('Guest login error:', err);
 			error = 'Guest login failed';
 		}
 	}
