@@ -1,0 +1,75 @@
+kind: pipeline
+type: docker
+name: feathur-ci
+
+platform:
+  os: linux
+  arch: amd64
+
+steps:
+  # Backend Tests
+  - name: backend-tests
+    image: golang:1.21-alpine
+    environment:
+      CGO_ENABLED: 0
+      GOOS: linux
+    commands:
+      - cd server
+      - go mod download
+      - go test -v ./...
+      - go build -o fethur-server cmd/server/main.go
+
+  # Frontend Lint
+  - name: frontend-lint
+    image: node:18-alpine
+    commands:
+      - cd client/web
+      - npm install -g pnpm
+      - pnpm install
+      - pnpm lint
+
+  # Frontend Type Check
+  - name: frontend-type-check
+    image: node:18-alpine
+    commands:
+      - cd client/web
+      - npm install -g pnpm
+      - pnpm install
+      - pnpm check
+
+  # Frontend Build
+  - name: frontend-build
+    image: node:18-alpine
+    commands:
+      - cd client/web
+      - npm install -g pnpm
+      - pnpm install
+      - pnpm build
+
+  # Frontend Tests
+  - name: frontend-tests
+    image: node:18-alpine
+    commands:
+      - cd client/web
+      - npm install -g pnpm
+      - pnpm install
+      - pnpm test --run
+
+  # Integration Tests (if needed)
+  - name: integration-tests
+    image: node:18-alpine
+    depends_on:
+      - backend-tests
+      - frontend-build
+    commands:
+      - echo "Integration tests would run here"
+      - echo "Could test API endpoints, WebSocket connections, etc."
+
+# Trigger on push to main and pull requests
+trigger:
+  branch:
+    - main
+    - develop
+  event:
+    - push
+    - pull_request 
