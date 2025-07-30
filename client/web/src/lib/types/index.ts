@@ -131,6 +131,7 @@ export interface TypingEvent extends WebSocketEvent {
 // Voice types
 export interface VoiceConnection {
 	id: number;
+	channelId?: number;
 	isConnected: boolean;
 	isMuted: boolean;
 	isDeafened: boolean;
@@ -144,6 +145,7 @@ export interface VoiceParticipant {
 	isDeafened: boolean;
 	isSpeaking: boolean;
 	volume: number;
+	connectionQuality?: 'excellent' | 'good' | 'poor';
 }
 
 export interface VoiceStore {
@@ -173,7 +175,9 @@ export interface ChatState {
 	messages: Message[];
 	typingUsers: TypingUser[];
 	isLoading: boolean;
+	isLoadingMessages?: boolean;
 	hasMore: boolean;
+	hasMoreMessages?: boolean;
 	error: string | null;
 }
 
