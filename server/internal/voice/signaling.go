@@ -42,6 +42,7 @@ type VoiceClient struct {
 	isDeafened bool
 	isSpeaking bool
 	lastSeen   time.Time
+	closed     bool
 	hub        *VoiceHub
 	mutex      sync.RWMutex
 }
@@ -155,7 +156,11 @@ func (h *VoiceHub) handleRegister(client *VoiceClient) {
 // handleUnregister unregisters a voice client
 func (h *VoiceHub) handleUnregister(client *VoiceClient) {
 	h.mutex.Lock()
-	defer h.mutex.Unlock()
+	if client.closed {
+		h.mutex.Unlock()
+		return
+	}
+	client.closed = true
 
 	// Remove from clients
 	delete(h.clients, client.ID)
@@ -183,6 +188,7 @@ func (h *VoiceHub) handleUnregister(client *VoiceClient) {
 			}
 		}
 	}
+	h.mutex.Unlock()
 
 	// Close connection
 	close(client.send)
