@@ -75,29 +75,32 @@
 			formData.append('file', file);
 			formData.append('channelId', channelId.toString());
 
-			// Simulate upload progress (replace with actual upload logic)
-			const uploadPromise = new Promise((resolve) => {
-				let progress = 0;
-				const interval = setInterval(() => {
-					progress += 10;
-					uploadProgress = progress;
-					if (progress >= 100) {
-						clearInterval(interval);
-						resolve(null);
-					}
-				}, 100);
+			// Upload file to server
+			const response = await fetch('/api/upload', {
+				method: 'POST',
+				headers: {
+					'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+				},
+				body: formData
 			});
 
-			await uploadPromise;
+			if (!response.ok) {
+				throw new Error('Upload failed');
+			}
 
-			// TODO: Replace with actual API call
-			console.log('File uploaded:', file.name);
+			const result = await response.json();
 			
 			// Send message with file attachment
-			await chatActions.sendMessage(channelId, `📎 ${file.name}`, $replyingTo && typeof $replyingTo === 'object' && 'id' in $replyingTo ? $replyingTo.id : undefined);
+			await chatActions.sendMessage(
+				channelId, 
+				`📎 [${file.name}](${result.url})`, 
+				$replyingTo && typeof $replyingTo === 'object' && 'id' in $replyingTo ? $replyingTo.id : undefined
+			);
 
 		} catch (error) {
 			console.error('Failed to upload file:', error);
+			// Show error to user
+			dispatch('error', { message: 'Failed to upload file' });
 		} finally {
 			isUploading = false;
 			uploadProgress = 0;

@@ -12,7 +12,7 @@
 	import EnhancedChatArea from '$lib/components/ui/EnhancedChatArea.svelte';
 	import UserList from '$lib/components/ui/UserList.svelte';
 	import VoiceControls from '$lib/components/ui/VoiceControls.svelte';
-	import type { User, Server, Channel } from '$lib/types';
+	import type { User, Server, Channel, Message } from '$lib/types';
 
 	let loading = true;
 	let error = '';
@@ -49,7 +49,7 @@
 				// Connect to WebSocket
 				await connectWebSocket(auth.token);
 
-				// Set up WebSocket event listeners
+				// Set up WebSocket event handlers
 				setupWebSocketListeners();
 
 			} catch (err) {
@@ -130,9 +130,10 @@
 
 	function setupWebSocketListeners() {
 		// Listen for new messages
-		wsClient.on('message', (data) => {
-			if (data.type === 'message_created' && data.channelId === currentChannel?.id) {
-				chatActions.addMessage(data.message);
+		wsClient.on('message', (data: unknown) => {
+			const messageEvent = data as { type: string; channelId: number; message: Message };
+			if (messageEvent.type === 'message_created' && messageEvent.channelId === currentChannel?.id) {
+				chatActions.addMessage(messageEvent.message);
 			}
 		});
 
@@ -143,11 +144,13 @@
 		});
 
 		// Listen for typing events
-		wsClient.on('typing', (data) => {
-			if (data.channelId === currentChannel?.id) {
+		wsClient.on('typing', (data: unknown) => {
+			const typingEvent = data as { channelId: number; userId: number; username: string; type: string };
+			if (typingEvent.channelId === currentChannel?.id) {
 				chatActions.updateTypingUsers({
-					...data,
-					isTyping: data.type === 'typing_start'
+					userId: typingEvent.userId,
+					username: typingEvent.username,
+					startedAt: new Date()
 				});
 			}
 		});

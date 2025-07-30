@@ -4,7 +4,7 @@ import type { WebSocketEvent, TypingEvent, MessageEvent, UserEvent } from '$lib/
 
 const WS_BASE_URL = PUBLIC_WS_URL || 'ws://localhost:8081';
 
-type EventHandler<T = any> = (data: T) => void;
+type EventHandler<T = unknown> = (data: T) => void;
 
 interface WebSocketOptions {
 	url?: string;
@@ -15,17 +15,17 @@ interface WebSocketOptions {
 
 class WebSocketClient {
 	private ws: WebSocket | null = null;
-	private url: string;
 	private token: string | null = null;
-	private eventHandlers: Map<string, EventHandler[]> = new Map();
+	private url: string;
 	private reconnectDelay: number;
 	private maxReconnectAttempts: number;
-	private reconnectAttempts: number = 0;
 	private heartbeatInterval: number;
-	private heartbeatTimer: NodeJS.Timeout | null = null;
+	private reconnectAttempts = 0;
 	private reconnectTimer: NodeJS.Timeout | null = null;
-	private isConnectingState: boolean = false;
-	private isManualDisconnect: boolean = false;
+	private heartbeatTimer: NodeJS.Timeout | null = null;
+	private isManualDisconnect = false;
+	private isConnectingState = false;
+	private eventHandlers = new Map<string, EventHandler[]>();
 
 	constructor(options: WebSocketOptions = {}) {
 		this.url = options.url || WS_BASE_URL;
@@ -54,7 +54,6 @@ class WebSocketClient {
 				this.ws = new WebSocket(wsUrl);
 
 				this.ws.onopen = () => {
-					console.log('WebSocket connected');
 					this.isConnectingState = false;
 					this.reconnectAttempts = 0;
 					this.startHeartbeat();
@@ -67,7 +66,6 @@ class WebSocketClient {
 				};
 
 				this.ws.onclose = (event) => {
-					console.log('WebSocket disconnected:', event.code, event.reason);
 					this.isConnectingState = false;
 					this.stopHeartbeat();
 					this.emit('disconnected', { 
@@ -82,7 +80,6 @@ class WebSocketClient {
 				};
 
 				this.ws.onerror = (error) => {
-					console.error('WebSocket error:', error);
 					this.isConnectingState = false;
 					this.emit('error', { error, timestamp: new Date() });
 					reject(new Error('WebSocket connection failed'));
@@ -98,12 +95,10 @@ class WebSocketClient {
 	disconnect(): void {
 		this.isManualDisconnect = true;
 		this.stopHeartbeat();
-		
 		if (this.reconnectTimer) {
 			clearTimeout(this.reconnectTimer);
 			this.reconnectTimer = null;
 		}
-
 		if (this.ws) {
 			this.ws.close(1000, 'Manual disconnect');
 			this.ws = null;
@@ -116,7 +111,6 @@ class WebSocketClient {
 		}
 
 		if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-			console.error('Max reconnection attempts reached');
 			this.emit('reconnectFailed', { attempts: this.reconnectAttempts });
 			return;
 		}
@@ -124,19 +118,17 @@ class WebSocketClient {
 		const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts);
 		this.reconnectAttempts++;
 
-		console.log(`Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts})`);
-		
 		this.reconnectTimer = setTimeout(() => {
 			if (!this.isManualDisconnect && this.token) {
 				this.emit('reconnecting', { attempt: this.reconnectAttempts });
-				this.connect(this.token).catch(() => {
+				this.connect(this.token!).catch(() => {
 					// Reconnection failed, will try again
 				});
 			}
 		}, delay);
 	}
 
-	private handleMessage(event: any): void {
+	private handleMessage(event: MessageEvent): void {
 		try {
 			const data = JSON.parse(event.data);
 			
@@ -169,7 +161,7 @@ class WebSocketClient {
 					break;
 			}
 		} catch (error) {
-			console.error('Failed to parse WebSocket message:', error);
+			this.emit('error', { error: 'Failed to parse WebSocket message', timestamp: new Date() });
 		}
 	}
 
@@ -177,7 +169,7 @@ class WebSocketClient {
 		this.stopHeartbeat();
 		this.heartbeatTimer = setInterval(() => {
 			if (this.ws?.readyState === WebSocket.OPEN) {
-				this.send({ type: 'heartbeat', timestamp: Date.now() });
+				this.ws.send(JSON.stringify({ type: 'heartbeat' }));
 			}
 		}, this.heartbeatInterval);
 	}
@@ -190,67 +182,66 @@ class WebSocketClient {
 	}
 
 	// Message sending
-	send(data: any): boolean {
+	sendMessage(channelId: number, content: string, replyToId?: number): void {
 		if (this.ws?.readyState === WebSocket.OPEN) {
-			try {
-				this.ws.send(JSON.stringify(data));
-				return true;
-			} catch (error) {
-				console.error('Failed to send WebSocket message:', error);
-				return false;
-			}
+			const message = {
+				type: 'send_message',
+				data: {
+					channelId,
+					content,
+					replyToId
+				}
+			};
+			this.ws.send(JSON.stringify(message));
 		}
-		return false;
 	}
 
-	// Specific message methods
-	sendMessage(channelId: number, content: string): boolean {
-		return this.send({
-			type: 'send_message',
-			channelId,
-			content,
-			timestamp: Date.now()
-		});
+	joinChannel(channelId: number): void {
+		if (this.ws?.readyState === WebSocket.OPEN) {
+			const message = {
+				type: 'join_channel',
+				data: { channelId }
+			};
+			this.ws.send(JSON.stringify(message));
+		}
 	}
 
-	startTyping(channelId: number): boolean {
-		return this.send({
-			type: 'typing_start',
-			channelId,
-			timestamp: Date.now()
-		});
+	leaveChannel(channelId: number): void {
+		if (this.ws?.readyState === WebSocket.OPEN) {
+			const message = {
+				type: 'leave_channel',
+				data: { channelId }
+			};
+			this.ws.send(JSON.stringify(message));
+		}
 	}
 
-	stopTyping(channelId: number): boolean {
-		return this.send({
-			type: 'typing_stop',
-			channelId,
-			timestamp: Date.now()
-		});
+	startTyping(channelId: number): void {
+		if (this.ws?.readyState === WebSocket.OPEN) {
+			const message = {
+				type: 'typing_start',
+				data: { channelId }
+			};
+			this.ws.send(JSON.stringify(message));
+		}
 	}
 
-	joinChannel(channelId: number): boolean {
-		return this.send({
-			type: 'join_channel',
-			channelId,
-			timestamp: Date.now()
-		});
-	}
-
-	leaveChannel(channelId: number): boolean {
-		return this.send({
-			type: 'leave_channel',
-			channelId,
-			timestamp: Date.now()
-		});
+	stopTyping(channelId: number): void {
+		if (this.ws?.readyState === WebSocket.OPEN) {
+			const message = {
+				type: 'typing_stop',
+				data: { channelId }
+			};
+			this.ws.send(JSON.stringify(message));
+		}
 	}
 
 	// Event handling
-	on<T = any>(event: string, handler: EventHandler<T>): void {
+	on<T = unknown>(event: string, handler: EventHandler<T>): void {
 		if (!this.eventHandlers.has(event)) {
 			this.eventHandlers.set(event, []);
 		}
-		this.eventHandlers.get(event)!.push(handler);
+		this.eventHandlers.get(event)!.push(handler as EventHandler);
 	}
 
 	off(event: string, handler: EventHandler): void {
@@ -263,14 +254,14 @@ class WebSocketClient {
 		}
 	}
 
-	private emit<T = any>(event: string, data: T): void {
+	private emit<T = unknown>(event: string, data: T): void {
 		const handlers = this.eventHandlers.get(event);
 		if (handlers) {
 			handlers.forEach(handler => {
 				try {
 					handler(data);
 				} catch (error) {
-					console.error(`Error in event handler for ${event}:`, error);
+					// Silently handle event handler errors
 				}
 			});
 		}
@@ -285,10 +276,6 @@ class WebSocketClient {
 		return this.isConnectingState;
 	}
 
-	getReadyState(): number | null {
-		return this.ws?.readyState ?? null;
-	}
-
 	getReconnectAttempts(): number {
 		return this.reconnectAttempts;
 	}
@@ -296,4 +283,3 @@ class WebSocketClient {
 
 // Export singleton instance
 export const wsClient = new WebSocketClient();
-export { WebSocketClient };

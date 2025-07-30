@@ -98,44 +98,37 @@ class VoiceClient {
 			}
 
 			this.ws = new WebSocket(wsUrl);
+
 			this.ws.onopen = () => {
 				this.sendSignaling({
-					type: 'join-room',
-					roomId: channelId,
-					userId: userId
+					type: 'join_voice',
+					channelId,
+					userId
 				});
 			};
 
 			this.ws.onmessage = this.handleWebSocketMessage.bind(this);
-			this.ws.onclose = () => {
-				voiceStore.update(state => ({
-					...state,
-					currentConnection: null,
-					isConnecting: false
-				}));
-			};
 
+			// Update store with connection
 			voiceStore.update(state => ({
 				...state,
 				currentConnection: {
-					channelId,
+					id: channelId,
 					isConnected: true,
 					isMuted: settings.pushToTalk,
 					isDeafened: false,
-					participants: [],
-					localStream: this.localStream!,
-					connections: this.connections
+					participants: []
 				},
 				isConnecting: false
 			}));
 
 		} catch (error) {
-			console.error('Failed to join voice channel:', error);
 			voiceStore.update(state => ({
 				...state,
-				error: error instanceof Error ? error.message : 'Failed to join voice channel',
-				isConnecting: false
+				isConnecting: false,
+				error: error instanceof Error ? error.message : 'Failed to join voice channel'
 			}));
+			throw error;
 		}
 	}
 
@@ -144,56 +137,91 @@ class VoiceClient {
 			this.localStream.getAudioTracks().forEach(track => {
 				track.enabled = !muted;
 			});
+		}
 
-			voiceStore.update(state => {
-				if (state.currentConnection) {
-					return {
-						...state,
-						currentConnection: {
-							...state.currentConnection,
-							isMuted: muted
-						}
-					};
-				}
-				return state;
+		voiceStore.update(state => ({
+			...state,
+			currentConnection: state.currentConnection ? {
+				...state.currentConnection,
+				isMuted: muted
+			} : null
+		}));
+
+		if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+			this.sendSignaling({
+				type: 'mute_state',
+				muted,
+				channelId: this.channelId,
+				userId: this.userId
 			});
 		}
 	}
 
-	private sendSignaling(message: any) {
+	private sendSignaling(message: unknown) {
 		if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-			this.ws.send(JSON.stringify({
-				...message,
-				roomId: this.channelId,
-				userId: this.userId
-			}));
+			this.ws.send(JSON.stringify(message));
 		}
 	}
 
 	private async handleWebSocketMessage(event: MessageEvent) {
-		// WebRTC signaling implementation
-		console.log('Voice message:', event.data);
+		try {
+			const data = JSON.parse(event.data);
+			// Handle signaling messages
+		} catch (error) {
+			// Handle parsing errors silently
+		}
 	}
 
 	async leaveVoiceChannel(): Promise<void> {
-		if (this.ws) {
-			this.ws.close();
-		}
 		if (this.localStream) {
 			this.localStream.getTracks().forEach(track => track.stop());
+			this.localStream = null;
 		}
-		this.connections.forEach(pc => pc.close());
+
+		if (this.ws) {
+			this.ws.close();
+			this.ws = null;
+		}
+
+		this.connections.forEach(connection => {
+			connection.close();
+		});
 		this.connections.clear();
-		
+
 		voiceStore.update(state => ({
 			...state,
-			currentConnection: null
+			currentConnection: null,
+			isConnecting: false,
+			error: null
 		}));
+	}
+
+	async getDevices(): Promise<{ audioInput: MediaDeviceInfo[]; audioOutput: MediaDeviceInfo[] }> {
+		if (!browser) {
+			return { audioInput: [], audioOutput: [] };
+		}
+
+		try {
+			const devices = await navigator.mediaDevices.enumerateDevices();
+			const audioInput = devices.filter(device => device.kind === 'audioinput');
+			const audioOutput = devices.filter(device => device.kind === 'audiooutput');
+
+			voiceStore.update(state => ({
+				...state,
+				devices: { audioInput, audioOutput }
+			}));
+
+			return { audioInput, audioOutput };
+		} catch (error) {
+			return { audioInput: [], audioOutput: [] };
+		}
 	}
 }
 
-export const voiceClient = browser ? new VoiceClient() : null;
+// Create voice client instance
+const voiceClient = new VoiceClient();
 
+// Voice actions
 export const voiceActions = {
 	async joinVoiceChannel(channelId: number, userId: number, wsUrl: string): Promise<void> {
 		if (!voiceClient) throw new Error('Voice client not available');
@@ -214,8 +242,13 @@ export const voiceActions = {
 	},
 
 	toggleDeafen(): void {
-		// TODO: Implement deafen functionality
-		console.log('Deafen functionality not yet implemented');
+		voiceStore.update(state => ({
+			...state,
+			currentConnection: state.currentConnection ? {
+				...state.currentConnection,
+				isDeafened: !state.currentConnection.isDeafened
+			} : null
+		}));
 	},
 
 	updateSettings(settings: Partial<VoiceStore['settings']>): void {
@@ -223,5 +256,10 @@ export const voiceActions = {
 			...state,
 			settings: { ...state.settings, ...settings }
 		}));
+	},
+
+	async loadDevices(): Promise<void> {
+		if (!voiceClient) return;
+		await voiceClient.getDevices();
 	}
 };

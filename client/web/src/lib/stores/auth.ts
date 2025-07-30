@@ -41,18 +41,14 @@ export const authActions = {
 		authStore.update(state => ({ ...state, isLoading: true }));
 
 		try {
-			console.log('🔧 Auth store: Initializing...');
 			const token = localStorage.getItem('auth_token');
-			console.log('🔧 Auth store: Token from localStorage:', token ? 'Present' : 'Missing');
 			
 			if (token) {
 				// Set token in API client first
 				apiClient.setToken(token);
-				console.log('🔧 Auth store: Token set in API client');
 				
 				// Verify token is still valid by fetching current user
 				const user = await apiClient.getCurrentUser();
-				console.log('🔧 Auth store: Current user fetched:', user);
 				
 				authStore.update(state => ({
 					...state,
@@ -65,19 +61,14 @@ export const authActions = {
 
 				// Connect WebSocket
 				await wsClient.connect(token);
-				console.log('🔧 Auth store: WebSocket connected');
 			} else {
-				console.log('🔧 Auth store: No token found, initializing as unauthenticated');
 				authStore.update(state => ({
 					...state,
 					isLoading: false,
 					isInitialized: true
 				}));
 			}
-			console.log('🔧 Auth store: Initialization complete');
 		} catch (error) {
-			console.error('🔧 Auth store: Initialization failed:', error);
-			
 			// Clear invalid token from localStorage and API client
 			if (browser) {
 				localStorage.removeItem('auth_token');
@@ -180,7 +171,7 @@ export const authActions = {
 			// Call API logout
 			await apiClient.logout();
 		} catch (error) {
-			console.warn('Logout API call failed:', error);
+			// Ignore logout API errors
 		} finally {
 			// Clear local state regardless of API call result
 			if (browser) {
@@ -208,8 +199,6 @@ export const authActions = {
 				error: null
 			}));
 		} catch (error) {
-			console.error('Token refresh failed:', error);
-			
 			// If refresh fails, logout user
 			await this.logout();
 			throw error;
@@ -233,4 +222,7 @@ export const authActions = {
 	}
 };
 
-// Don't auto-initialize - let the layout handle initialization
+// Auto-initialize when store is created
+if (browser) {
+	authActions.initialize();
+}

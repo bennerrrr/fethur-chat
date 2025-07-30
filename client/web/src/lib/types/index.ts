@@ -21,7 +21,9 @@ export interface Server {
 	ownerId: number;
 	memberCount: number;
 	channels: Channel[];
+	members?: User[];
 	createdAt: Date;
+	updatedAt?: Date;
 }
 
 export interface Channel {
@@ -32,6 +34,7 @@ export interface Channel {
 	serverId: number;
 	position: number;
 	createdAt: Date;
+	updatedAt?: Date;
 }
 
 export interface Message {
@@ -48,61 +51,30 @@ export interface Message {
 	replyTo?: Message;
 	reactions?: Reaction[];
 	attachments?: Attachment[];
-	type?: 'text' | 'system' | 'voice_join' | 'voice_leave';
 }
 
 export interface Reaction {
 	id: number;
 	emoji: string;
 	count: number;
-	users: User[];
-	messageId: number;
+	users: number[];
 }
 
 export interface Attachment {
 	id: number;
 	filename: string;
 	url: string;
-	mimeType: string;
 	size: number;
-	messageId: number;
-}
-
-// Voice-related types
-export interface VoiceState {
-	userId: number;
-	channelId: number | null;
-	isMuted: boolean;
-	isDeafened: boolean;
-	isSpeaking: boolean;
-	connectionQuality: 'excellent' | 'good' | 'poor' | 'disconnected';
-}
-
-export interface VoiceConnection {
-	channelId: number;
-	isConnected: boolean;
-	isMuted: boolean;
-	isDeafened: boolean;
-	participants: VoiceParticipant[];
-	localStream?: MediaStream;
-	connections: Map<number, RTCPeerConnection>;
-}
-
-export interface VoiceParticipant {
-	user: User;
-	isSpeaking: boolean;
-	isMuted: boolean;
-	isDeafened: boolean;
-	volume: number;
-	connectionQuality: 'excellent' | 'good' | 'poor';
+	type: string;
+	uploadedAt: Date;
 }
 
 // API response types
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T> {
 	success: boolean;
-	data?: T;
-	error?: string;
+	data: T;
 	message?: string;
+	error?: string;
 }
 
 export interface PaginatedResponse<T> {
@@ -128,47 +100,50 @@ export interface RegisterRequest {
 export interface AuthResponse {
 	token: string;
 	user: User;
-	expiresAt: Date;
+	expiresAt?: Date;
 }
 
 // WebSocket event types
-export interface TypingEvent {
-	userId: number;
-	channelId: number;
-	username: string;
-	isTyping: boolean;
+export interface WebSocketEvent {
+	type: string;
+	timestamp: Date;
 }
 
-export interface MessageEvent {
+export interface MessageEvent extends WebSocketEvent {
 	type: 'message_created' | 'message_updated' | 'message_deleted';
-	message: Message;
+	data: Message;
 }
 
-export interface UserEvent {
+export interface UserEvent extends WebSocketEvent {
 	type: 'user_joined' | 'user_left' | 'user_online' | 'user_offline';
-	user: User;
-	serverId?: number;
+	data: User;
 }
 
-export type WebSocketEvent = MessageEvent | UserEvent | TypingEvent;
+export interface TypingEvent extends WebSocketEvent {
+	type: 'typing_start' | 'typing_stop';
+	data: {
+		userId: number;
+		username: string;
+		channelId: number;
+	};
+}
 
-// UI state types
-export interface AppState {
-	currentUser: User | null;
-	currentServer: Server | null;
-	currentChannel: Channel | null;
-	servers: Server[];
+// Voice types
+export interface VoiceConnection {
+	id: number;
 	isConnected: boolean;
-	isLoading: boolean;
+	isMuted: boolean;
+	isDeafened: boolean;
+	participants: VoiceParticipant[];
 }
 
-export interface ChatState {
-	messages: Message[];
-	typingUsers: TypingEvent[];
-	isLoadingMessages: boolean;
-	hasMoreMessages: boolean;
-	replyingTo: Message | null;
-	selectedMessage: Message | null;
+export interface VoiceParticipant {
+	id: number;
+	username: string;
+	isMuted: boolean;
+	isDeafened: boolean;
+	isSpeaking: boolean;
+	volume: number;
 }
 
 export interface VoiceStore {
@@ -193,10 +168,164 @@ export interface VoiceStore {
 	};
 }
 
-// Environment configuration
-export interface Config {
-	apiUrl: string;
-	wsUrl: string;
-	devMode: boolean;
-	logLevel: 'debug' | 'info' | 'warn' | 'error';
+// Chat types
+export interface ChatState {
+	messages: Message[];
+	typingUsers: TypingUser[];
+	isLoading: boolean;
+	hasMore: boolean;
+	error: string | null;
+}
+
+export interface TypingUser {
+	userId: number;
+	username: string;
+	startedAt: Date;
+}
+
+// App state types
+export interface AppState {
+	currentUser: User | null;
+	currentServer: Server | null;
+	currentChannel: Channel | null;
+	servers: Server[];
+	isConnected: boolean;
+	isLoading: boolean;
+}
+
+// Form types
+export interface LoginForm {
+	username: string;
+	password: string;
+}
+
+export interface RegisterForm {
+	username: string;
+	email: string;
+	password: string;
+	confirmPassword: string;
+}
+
+export interface ServerForm {
+	name: string;
+	description: string;
+}
+
+export interface ChannelForm {
+	name: string;
+	description: string;
+	type: 'text' | 'voice';
+}
+
+export interface MessageForm {
+	content: string;
+	replyToId?: number;
+}
+
+// Error types
+export interface ApiError {
+	status: number;
+	message: string;
+	data?: unknown;
+}
+
+// Settings types
+export interface UserSettings {
+	theme: 'light' | 'dark' | 'system';
+	language: string;
+	notifications: {
+		enabled: boolean;
+		sound: boolean;
+		desktop: boolean;
+	};
+	privacy: {
+		showOnlineStatus: boolean;
+		allowDirectMessages: boolean;
+	};
+}
+
+export interface ServerSettings {
+	name: string;
+	description: string;
+	icon?: string;
+	permissions: {
+		allowInvites: boolean;
+		requireVerification: boolean;
+	};
+}
+
+// Notification types
+export interface Notification {
+	id: string;
+	type: 'info' | 'success' | 'warning' | 'error';
+	title: string;
+	message: string;
+	duration?: number;
+	action?: {
+		label: string;
+		callback: () => void;
+	};
+}
+
+// Search types
+export interface SearchResult {
+	type: 'message' | 'user' | 'channel' | 'server';
+	data: Message | User | Channel | Server;
+	score: number;
+}
+
+export interface SearchOptions {
+	query: string;
+	type?: 'message' | 'user' | 'channel' | 'server';
+	limit?: number;
+	serverId?: number;
+	channelId?: number;
+}
+
+// File upload types
+export interface FileUpload {
+	id: string;
+	file: File;
+	progress: number;
+	status: 'pending' | 'uploading' | 'completed' | 'error';
+	url?: string;
+	error?: string;
+}
+
+// Modal types
+export interface ModalState {
+	isOpen: boolean;
+	type: string;
+	data?: unknown;
+}
+
+// Route types
+export interface RouteParams {
+	serverId?: string;
+	channelId?: string;
+	messageId?: string;
+}
+
+// Event types
+export interface AppEvent {
+	type: string;
+	data?: unknown;
+	timestamp: Date;
+}
+
+// Performance types
+export interface PerformanceMetrics {
+	loadTime: number;
+	renderTime: number;
+	memoryUsage: number;
+	networkRequests: number;
+}
+
+// Debug types
+export interface DebugInfo {
+	token: string | null;
+	backendHealth: string | null;
+	user: User | null;
+	servers: Server[] | null;
+	error: string | null;
 }

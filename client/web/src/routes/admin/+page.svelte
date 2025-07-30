@@ -4,6 +4,7 @@
 	import { apiClient } from '$lib/api/client';
 	import { goto } from '$app/navigation';
 	import type { User } from '$lib/types';
+	import type { Server } from '$lib/types';
 
 	let currentUser: User | null = null;
 	let users: User[] = [];
@@ -12,7 +13,7 @@
 	let metrics: any = null;
 	let auditLogs: any[] = [];
 	let userLatency: any[] = [];
-	let servers: any[] = [];
+	let servers: Server[] = [];
 	
 	let activeTab = 'users';
 	let isLoading = false;
@@ -34,6 +35,9 @@
 	// Server management
 	let showCreateServerModal = false;
 	let newServer = { name: '', description: '' };
+	let selectedServer: Server | null = null;
+	let editServerData: { name: string; description: string } = { name: '', description: '' };
+	let showEditServerModal = false;
 	
 	onMount(async () => {
 		if (!browser) return;
@@ -131,19 +135,37 @@
 		}
 	}
 
-	function editServer(server: any) {
-		// TODO: Implement server editing
-		console.log('Edit server:', server);
+	function editServer(server: Server) {
+		selectedServer = server;
+		editServerData = { 
+			name: server.name, 
+			description: server.description || '' 
+		};
+		showEditServerModal = true;
+	}
+
+	async function updateServer() {
+		if (!selectedServer) return;
+		
+		try {
+			await apiClient.updateServer(selectedServer.id, editServerData);
+			showEditServerModal = false;
+			selectedServer = null;
+			await loadServers();
+		} catch (err: unknown) {
+			const error = err as Error;
+			console.error('Failed to update server:', error);
+		}
 	}
 
 	async function deleteServer(serverId: number) {
 		if (confirm('Are you sure you want to delete this server?')) {
 			try {
-				// TODO: Implement server deletion API
-				console.log('Delete server:', serverId);
+				await apiClient.deleteServer(serverId);
 				await loadServers();
-			} catch (err: any) {
-				console.error('Failed to delete server:', err);
+			} catch (err: unknown) {
+				const error = err as Error;
+				console.error('Failed to delete server:', error);
 			}
 		}
 	}
@@ -667,6 +689,33 @@
 						</button>
 						<button type="submit" class="btn-primary">
 							Create Server
+						</button>
+					</div>
+				</form>
+			</div>
+		</div>
+	{/if}
+
+	<!-- Edit Server Modal -->
+	{#if showEditServerModal}
+		<div class="modal-overlay" on:click={() => showEditServerModal = false}>
+			<div class="modal" on:click|stopPropagation>
+				<h2>Edit Server</h2>
+				<form on:submit|preventDefault={updateServer}>
+					<div class="form-group">
+						<label for="edit-server-name">Server Name</label>
+						<input type="text" id="edit-server-name" bind:value={editServerData.name} required />
+					</div>
+					<div class="form-group">
+						<label for="edit-server-description">Description</label>
+						<textarea id="edit-server-description" bind:value={editServerData.description} rows="3"></textarea>
+					</div>
+					<div class="modal-actions">
+						<button type="button" class="btn-secondary" on:click={() => showEditServerModal = false}>
+							Cancel
+						</button>
+						<button type="submit" class="btn-primary">
+							Update Server
 						</button>
 					</div>
 				</form>
