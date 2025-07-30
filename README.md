@@ -1,289 +1,252 @@
-# Fethur - Modern Chat Platform
+# Feathur 🚀
 
-A real-time chat platform built with Go (backend) and SvelteKit (frontend), featuring modern UI/UX, comprehensive admin tools, and robust authentication.
+A modern, self-hosted communication platform featuring real-time chat, voice communication, and comprehensive administration tools. Built with Go (backend) and SvelteKit (frontend), Feathur provides a Discord-like experience with enterprise-grade features.
 
-## 🚀 Recent Updates (Latest)
+## ✨ Features
 
-### ✅ **Voice Chat Implementation** 🎤
-- **Complete WebRTC Voice System**: Full voice chat with WebRTC peer connections
-- **HTTPS Support**: Self-signed certificates for local development
-- **Voice Controls UI**: Mute, deafen, settings, and connection status
-- **Voice Test Page**: Dedicated testing interface for troubleshooting
-- **Enhanced Error Handling**: Proper MediaDevices API error handling
-- **Voice Statistics**: Admin panel integration for voice monitoring
-
-### ✅ **Admin System - Complete Overhaul**
-- **Fixed Admin Page**: Completely rewrote admin page to resolve all syntax errors and structural issues
-- **High-Contrast UI**: Implemented pure black/white color scheme for maximum readability
-- **Comprehensive Admin Dashboard**: Full user management, moderation tools, system health, metrics, and server management
-- **Real-time Features**: Live user monitoring, audit logs, and system metrics
-
-### ✅ **UI/UX Improvements**
-- **Text Readability**: Fixed all text visibility issues with high-contrast color scheme
-- **Modern Design System**: Implemented CSS design tokens and Inter font
-- **Responsive Layout**: Improved navigation and component layouts
-- **Error Handling**: Comprehensive error boundaries and user feedback
-
-### ✅ **Authentication & Security**
-- **Role-Based Access**: `user`, `admin`, `super_admin` roles with proper permissions
-- **Guest Mode**: Optional guest access with admin controls
-- **JWT Authentication**: Secure token-based authentication
-- **Admin Middleware**: Protected admin-only routes and features
-
-## 🎯 Features
-
-### **Core Chat Features**
-- ✅ **Real-time Messaging**: WebSocket-powered live chat
-- ✅ **Voice Chat**: WebRTC-based voice communication 🎤
-- ✅ **Server & Channel Management**: Create and manage chat servers
-- ✅ **User Authentication**: Secure login/register system
-- ✅ **Guest Mode**: Optional anonymous access
-- ✅ **Message History**: Persistent message storage
-- ✅ **Typing Indicators**: Real-time typing status
-
-### **Admin System** 🆕
-- ✅ **User Management**: Create, edit, delete, and role management
-- ✅ **Moderation Tools**: Kick, ban, mute, unban, unmute users
-- ✅ **System Health**: Database, WebSocket, and API status monitoring
-- ✅ **Metrics Dashboard**: User activity, role distribution, online users
-- ✅ **Audit Logging**: Complete action tracking for admins
-- ✅ **IP Tracking**: User IP address monitoring
-- ✅ **Server Management**: Create and manage chat servers
-- ✅ **User Latency**: Performance monitoring per user
-
-### **Modern UI/UX** 🆕
-- ✅ **High-Contrast Theme**: Pure black/white for maximum readability
-- ✅ **Inter Font**: Modern typography throughout
-- ✅ **CSS Design Tokens**: Consistent spacing, colors, and shadows
-- ✅ **Responsive Design**: Works on all device sizes
-- ✅ **Loading States**: Smooth loading indicators
-- ✅ **Error Boundaries**: Graceful error handling
-- ✅ **Accessibility**: ARIA labels and keyboard navigation
-
-### **Technical Features**
-- ✅ **WebSocket Real-time**: Live message updates
-- ✅ **WebRTC Voice**: Peer-to-peer voice communication
-- ✅ **HTTPS Development**: Self-signed certificates for local testing
-- ✅ **REST API**: Comprehensive backend API
-- ✅ **SQLite Database**: Lightweight, persistent storage
-- ✅ **CORS Support**: Cross-origin resource sharing
-- ✅ **Environment Configuration**: Flexible deployment options
-- ✅ **Docker Support**: Containerized deployment
-
-## 🛠️ Tech Stack
-
-### **Backend (Go)**
-- **Framework**: Gin Web Framework
-- **Database**: SQLite3
-- **Authentication**: JWT + Bcrypt
-- **Real-time**: WebSocket (Gorilla)
-- **CORS**: Cross-origin support
-
-### **Frontend (SvelteKit)**
-- **Framework**: SvelteKit
-- **Build Tool**: Vite
-- **Package Manager**: pnpm
-- **Styling**: CSS with design tokens
-- **Font**: Inter (Google Fonts)
-- **State Management**: Svelte stores
+- **🔐 Authentication**: JWT-based login/register with guest access
+- **💬 Real-time Chat**: WebSocket-based messaging with reactions and file uploads
+- **🎤 Voice Communication**: WebRTC-based voice chat with advanced settings
+- **🛡️ Admin Panel**: Comprehensive user and server management
+- **🔒 Security**: HTTPS support with SSL/TLS encryption
+- **📱 Responsive**: Modern UI that works on desktop and mobile
+- **⚡ Performance**: Optimized for speed and efficiency
 
 ## 🚀 Quick Start
 
-### **Prerequisites**
-- Go 1.21+
-- Node.js 18+
-- pnpm
+### Using Docker (Recommended)
 
-### **Backend Setup**
 ```bash
+# Clone the repository
+git clone <repository-url>
+cd Feathur
+
+# Start all services
+docker-compose up -d
+
+# Access the application
+# Frontend: https://localhost:5173
+# Backend: https://localhost:8081
+```
+
+### Local Development
+
+```bash
+# Clone the repository
+git clone <repository-url>
+cd Feathur
+
+# Start backend
+cd server && go run cmd/server/main.go
+
+# In another terminal, start frontend
+cd client/web && pnpm dev
+
+# Access the application
+# Frontend: https://localhost:5173
+# Backend: https://localhost:8081
+```
+
+## 🛠️ Development
+
+### Prerequisites
+
+- **Go 1.21+** for backend development
+- **Node.js 18+** and **pnpm** for frontend development
+- **Git** for version control
+
+### Setup Development Environment
+
+```bash
+# Backend setup
 cd server
 go mod download
-go run cmd/server/main.go
-```
-Server runs on `http://localhost:8081`
+go test ./...
 
-### **Frontend Setup**
-```bash
+# Frontend setup
 cd client/web
 pnpm install
-pnpm dev
-```
-Frontend runs on `http://localhost:5173` (or next available port)
+pnpm build
+pnpm test
 
-### **HTTPS Setup for Voice Chat** 🎤
-For voice chat functionality, HTTPS is required. Use the provided script:
+# Run all tests
+make ci
+```
+
+### Available Commands
+
 ```bash
-./start-https.sh
-```
-This will start both backend and frontend with HTTPS support.
+# Development
+make dev              # Start both backend and frontend
+make dev-backend      # Start backend only
+make dev-frontend     # Start frontend only
 
-**Manual Setup:**
-1. Backend: `cd server && go run cmd/server/main.go`
-2. Frontend: `cd client/web && pnpm dev` (HTTPS enabled automatically)
+# Testing
+make ci               # Run full CI pipeline
+make ci-backend       # Backend tests only
+make ci-frontend      # Frontend tests only
+make test-local       # Quick local tests
 
-**Access URLs:**
-- Frontend (HTTPS): `https://localhost:5173`
-- Voice Test: `https://localhost:5173/voice-test`
-- Backend (HTTP): `http://localhost:8081`
+# Build
+make build            # Build both backend and frontend
+make build-backend    # Build backend only
+make build-frontend   # Build frontend only
 
-See `HTTPS_SETUP.md` for detailed instructions.
-
-### **Database**
-- SQLite database automatically created at `server/data/fethur.db`
-- Default admin user: `admin` / `password123!` (super_admin role)
-
-## 📖 Usage Guide
-
-### **For Users**
-1. **Register/Login**: Create account or use guest mode
-2. **Join Servers**: Browse and join available chat servers
-3. **Chat**: Send messages in real-time with typing indicators
-4. **User Management**: Update profile and settings
-
-### **For Admins**
-1. **Access Admin Panel**: Navigate to `/admin` (admin/super_admin only)
-2. **User Management**: Create, edit, delete users and assign roles
-3. **Moderation**: Kick, ban, mute users as needed
-4. **System Monitoring**: Check health, metrics, and audit logs
-5. **Server Management**: Create and manage chat servers
-
-### **Admin Features**
-- **User Management**: Full CRUD operations for users
-- **Role Assignment**: Assign user, admin, or super_admin roles
-- **Moderation Actions**: Kick, ban (temporary/permanent), mute users
-- **System Health**: Monitor database, WebSocket, and API status
-- **Real-time Metrics**: User activity, online users, message counts
-- **Audit Logs**: Track all admin actions with timestamps
-- **IP Tracking**: Monitor user connection IPs
-- **Server Management**: Create, view, and manage chat servers
-
-## 🔧 Configuration
-
-### **Environment Variables**
-```bash
-# Frontend (.env)
-PUBLIC_API_URL=http://localhost:8081
-PUBLIC_WS_URL=ws://localhost:8081
-PUBLIC_DEV_MODE=true
-PUBLIC_LOG_LEVEL=debug
+# Docker
+make docker-build     # Build Docker images
+make docker-up        # Start with Docker Compose
+make docker-down      # Stop Docker services
 ```
 
-### **Database**
-- **Location**: `server/data/fethur.db`
-- **Schema**: Auto-created on first run
-- **Tables**: users, servers, channels, messages, user_bans, user_mutes, audit_logs
-
-## 🏗️ Project Structure
+## 📁 Project Structure
 
 ```
 Feathur/
 ├── server/                 # Go backend
-│   ├── cmd/server/        # Main application
+│   ├── cmd/server/        # Main application entry point
 │   ├── internal/          # Internal packages
-│   │   ├── auth/          # Authentication
-│   │   ├── database/      # Database operations
-│   │   ├── server/        # HTTP server
-│   │   ├── websocket/     # WebSocket handling
-│   │   └── voice/         # Voice features
-│   └── data/              # Database files
+│   │   ├── auth/         # Authentication logic
+│   │   ├── database/     # Database operations
+│   │   ├── server/       # HTTP server and routes
+│   │   ├── voice/        # WebRTC voice handling
+│   │   └── websocket/    # WebSocket connections
+│   └── data/             # SQLite database files
 ├── client/web/            # SvelteKit frontend
 │   ├── src/
-│   │   ├── lib/
-│   │   │   ├── api/       # API client
-│   │   │   ├── components/ui/  # UI components
-│   │   │   ├── stores/    # State management
-│   │   │   └── types/     # TypeScript types
-│   │   └── routes/        # SvelteKit routes
-│   └── static/            # Static assets
-└── docs/                  # Documentation
+│   │   ├── lib/          # Shared libraries
+│   │   │   ├── api/      # API client
+│   │   │   ├── components/ # UI components
+│   │   │   ├── stores/   # Svelte stores
+│   │   │   └── webrtc/   # WebRTC client
+│   │   └── routes/       # SvelteKit pages
+│   └── static/           # Static assets
+├── docs/                 # Documentation
+├── docker/               # Docker configuration
+└── scripts/              # Development scripts
 ```
 
-## 🎨 UI/UX Design System
+## 🔧 Configuration
 
-### **Color Palette**
-- **Background**: Pure black (`#000000`)
-- **Surface**: Dark gray (`#111111`)
-- **Text**: Pure white (`#ffffff`)
-- **Accent**: Blue (`#3b82f6`)
-- **Success**: Green (`#10b981`)
-- **Error**: Red (`#ef4444`)
-- **Warning**: Orange (`#f59e0b`)
+### Environment Variables
 
-### **Typography**
-- **Font Family**: Inter (Google Fonts)
-- **Font Sizes**: xs, sm, base, lg, xl, 2xl, 3xl
-- **Line Heights**: tight, normal, relaxed
+Create a `.env` file in the project root:
 
-### **Spacing & Layout**
-- **Border Radius**: sm, md, lg, xl
-- **Shadows**: sm, md, lg, xl
-- **Transitions**: 0.2s ease
+```env
+# Server Configuration
+SERVER_PORT=8081
+SERVER_HOST=localhost
+SSL_ENABLED=true
+SSL_CERT_FILE=ssl/cert.pem
+SSL_KEY_FILE=ssl/key.pem
 
-## 🔒 Security Features
+# Database
+DATABASE_URL=./data/feathur.db
 
-### **Authentication**
-- JWT tokens with expiration
-- Bcrypt password hashing
-- Role-based access control
-- Admin middleware protection
+# JWT
+JWT_SECRET=your-secret-key-here
+JWT_EXPIRY=24h
 
-### **Data Protection**
-- Input validation and sanitization
-- SQL injection prevention
-- XSS protection
-- CORS configuration
+# CORS
+CORS_ALLOWED_ORIGINS=https://localhost:5173,https://localhost:3000
+```
 
-## 📊 Monitoring & Analytics
+### SSL Certificate Generation
 
-### **System Health**
-- Database connection status
-- WebSocket connection count
-- API uptime monitoring
-- Error rate tracking
+For HTTPS support, generate self-signed certificates:
 
-### **User Metrics**
-- Active users (24h)
-- New user registrations
-- Message activity
-- Role distribution
-- User latency tracking
-
-### **Audit Logging**
-- Admin action tracking
-- User moderation events
-- System configuration changes
-- Security events
-
-## 🚀 Deployment
-
-### **Docker**
 ```bash
-docker-compose up -d
+# Generate SSL certificates
+./start-https.sh
+
+# Or manually
+mkdir ssl
+openssl req -x509 -newkey rsa:4096 -keyout ssl/key.pem -out ssl/cert.pem -days 365 -nodes
 ```
 
-### **Manual Deployment**
-1. Build backend: `go build -o fethur-server cmd/server/main.go`
-2. Build frontend: `pnpm build`
-3. Serve static files and run backend
+## 🧪 Testing
+
+### Backend Tests
+
+```bash
+cd server
+go test -v ./...
+```
+
+### Frontend Tests
+
+```bash
+cd client/web
+pnpm test
+pnpm lint
+pnpm check
+```
+
+### Full CI Pipeline
+
+```bash
+# Run complete CI pipeline locally
+make ci
+
+# Or use the script
+./scripts/local-ci.sh
+```
+
+## 📚 Documentation
+
+- **[Project Status & Changelog](docs/PROJECT_STATUS_AND_CHANGELOG.md)** - Comprehensive project overview
+- **[Local CI/CD Guide](docs/LOCAL_CI_GUIDE.md)** - Running tests locally
+- **[Home Lab CI Setup](docs/HOMELAB_CI_SETUP.md)** - Self-hosted CI/CD options
+- **[API Documentation](docs/API_DOCUMENTATION.md)** - Backend API reference
+- **[User Guide](docs/USER_GUIDE.md)** - End-user documentation
 
 ## 🤝 Contributing
+
+We welcome contributions! Please see our [Contributing Guide](docs/CONTRIBUTING.md) for details.
+
+### Development Workflow
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Test thoroughly
+4. Run tests: `make ci`
 5. Submit a pull request
 
-## 📝 License
+## 🐛 Troubleshooting
+
+### Common Issues
+
+**Port already in use:**
+```bash
+# Kill process using port 8081
+lsof -ti:8081 | xargs kill -9
+```
+
+**Frontend build errors:**
+```bash
+cd client/web
+rm -rf node_modules .svelte-kit
+pnpm install
+pnpm build
+```
+
+**Database issues:**
+```bash
+cd server
+rm -f data/feathur.db
+go run cmd/server/main.go
+```
+
+## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🆘 Support
+## 🙏 Acknowledgments
 
-- **Issues**: Create GitHub issues for bugs or feature requests
-- **Documentation**: Check the `/docs` folder for detailed guides
-- **Admin Guide**: See `/docs/USER_GUIDE.md` for admin features
+- Built with [Go](https://golang.org/) and [SvelteKit](https://kit.svelte.dev/)
+- UI components powered by [Tailwind CSS](https://tailwindcss.com/)
+- Icons from [Lucide](https://lucide.dev/)
+- Real-time communication with [WebSocket](https://developer.mozilla.org/en-US/docs/Web/API/WebSocket) and [WebRTC](https://webrtc.org/)
 
 ---
 
-**Fethur** - Modern, secure, and feature-rich chat platform for communities and teams.
+**Feathur** - Modern communication, self-hosted. 🚀
