@@ -216,3 +216,55 @@ info:
 	@echo "  Server: $(SERVER_DIR)"
 	@echo "  Client: $(CLIENT_DIR)"
 	@echo "  Docker: $(DOCKER_DIR)" 
+
+# CI/CD Commands
+.PHONY: ci ci-backend ci-frontend ci-full test-local
+
+# Run full CI pipeline locally
+ci: ci-backend ci-frontend
+	@echo "🎉 All CI tests passed!"
+
+# Backend CI
+ci-backend:
+	@echo "🔧 Running Backend CI..."
+	cd server && go test -v ./...
+	@echo "✅ Backend CI passed"
+
+# Frontend CI
+ci-frontend:
+	@echo "🎨 Running Frontend CI..."
+	cd client/web && pnpm lint
+	cd client/web && pnpm check
+	cd client/web && pnpm build
+	cd client/web && pnpm test --run
+	@echo "✅ Frontend CI passed"
+
+# Run tests locally (quick)
+test-local:
+	@echo "🧪 Running local tests..."
+	cd server && go test ./...
+	cd client/web && pnpm test --run
+	@echo "✅ Local tests passed"
+
+# Run with Act (GitHub Actions local)
+ci-act:
+	@echo "🚀 Running GitHub Actions locally with Act..."
+	act --container-architecture linux/amd64
+
+# Run specific job with Act
+ci-act-job:
+	@echo "🎯 Running specific job with Act..."
+	act -j $(job) --container-architecture linux/amd64
+
+# Docker-based CI
+ci-docker:
+	@echo "🐳 Running CI with Docker Compose..."
+	docker-compose -f docker-compose.ci.yml --profile ci up --build --abort-on-container-exit
+
+# Clean up CI artifacts
+ci-clean:
+	@echo "🧹 Cleaning up CI artifacts..."
+	cd client/web && rm -rf node_modules/.cache
+	cd client/web && rm -rf .svelte-kit
+	cd client/web && rm -rf build
+	@echo "✅ Cleanup complete" 

@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  # Backend CI
+  backend-ci:
+    build:
+      context: ./server
+      dockerfile: Dockerfile.ci
+    volumes:
+      - ./server:/app
+      - go-cache:/go
+    environment:
+      - CGO_ENABLED=0
+      - GOOS=linux
+    command: ["go", "test", "-v", "./..."]
+    profiles: ["ci"]
+
+  # Frontend CI
+  frontend-ci:
+    build:
+      context: ./client/web
+      dockerfile: Dockerfile.ci
+    volumes:
+      - ./client/web:/app
+      - node-modules:/app/node_modules
+    environment:
+      - NODE_ENV=test
+    command: ["sh", "-c", "pnpm install && pnpm lint && pnpm check && pnpm build && pnpm test --run"]
+    profiles: ["ci"]
+
+  # Integration Tests
+  integration-ci:
+    build:
+      context: .
+      dockerfile: Dockerfile.integration
+    volumes:
+      - .:/app
+    environment:
+      - TEST_ENV=ci
+    depends_on:
+      - backend-ci
+      - frontend-ci
+    command: ["sh", "-c", "echo 'Integration tests would run here'"]
+    profiles: ["ci"]
+
+volumes:
+  go-cache:
+  node-modules: 
