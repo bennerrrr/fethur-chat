@@ -277,7 +277,8 @@ class VoiceClient {
 		
 		this.state.update(s => ({
 			...s,
-			currentChannelId: channel_id
+			currentChannelId: channel_id,
+			isConnected: true
 		}));
 
 		console.log(`Joined voice channel: ${channel_name} (${channel_id})`);
@@ -435,7 +436,7 @@ class VoiceClient {
 		}
 
 		// Wait for registration to complete
-		let state = this.getState();
+		const state = this.getState();
 		if (!state.isRegistered) {
 			console.log('Waiting for registration to complete...');
 			await new Promise<void>((resolve) => {

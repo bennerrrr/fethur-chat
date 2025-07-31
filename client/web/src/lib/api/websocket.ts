@@ -137,14 +137,22 @@ class WebSocketClient {
 
 	private handleMessage(event: MessageEvent): void {
 		try {
-			console.log('WebSocket message received:', event.data);
+			console.log('📨 [WEBSOCKET] Raw message received:', event.data);
 			const data = JSON.parse(event.data);
+			console.log('📨 [WEBSOCKET] Parsed message:', data);
 			
 			// Handle different message types based on backend format
 			switch (data.type) {
-				case 'text':
+				case 'text': {
 					// Text message from backend
-					console.log('Processing text message from backend:', data);
+					console.log('💬 [WEBSOCKET] Processing text message from backend:', {
+						channelId: data.channel_id,
+						userId: data.user_id,
+						username: data.username,
+						content: data.content?.substring(0, 50) + '...',
+						messageId: data.data?.id
+					});
+					
 					const messageEvent = {
 						type: 'message_created',
 						channelId: data.channel_id,
@@ -161,13 +169,25 @@ class WebSocketClient {
 							updatedAt: data.data?.created_at || data.timestamp || new Date().toISOString()
 						}
 					} as MessageEvent;
-					console.log('Emitting message event:', messageEvent);
+					
+					console.log('✅ [WEBSOCKET] Emitting message event:', {
+						type: messageEvent.type,
+						channelId: messageEvent.channelId,
+						messageId: messageEvent.message.id
+					});
 					this.emit('message', messageEvent);
 					break;
+				}
 				
 				case 'join':
 				case 'leave':
 					// User joined/left channel
+					console.log('👥 [WEBSOCKET] User event:', {
+						type: data.type,
+						userId: data.user_id,
+						username: data.username,
+						channelId: data.channel_id
+					});
 					this.emit('user', {
 						type: data.type === 'join' ? 'user_joined' : 'user_left',
 						user: {
@@ -181,6 +201,11 @@ class WebSocketClient {
 				case 'typing':
 				case 'stop_typing':
 					// Typing indicators
+					console.log('⌨️ [WEBSOCKET] Typing event:', {
+						type: data.type,
+						userId: data.user_id,
+						channelId: data.channel_id
+					});
 					this.emit('typing', {
 						userId: data.user_id,
 						channelId: data.channel_id,
@@ -190,13 +215,17 @@ class WebSocketClient {
 				
 				case 'heartbeat':
 					// Handle heartbeat response
+					console.log('💓 [WEBSOCKET] Heartbeat received');
 					break;
 				
 				default:
+					console.log('❓ [WEBSOCKET] Unknown message type:', data.type);
 					this.emit('unknown', data);
 					break;
 			}
 		} catch (error) {
+			console.error('❌ [WEBSOCKET] Failed to parse WebSocket message:', error);
+			console.error('❌ [WEBSOCKET] Raw message was:', event.data);
 			this.emit('error', { error: 'Failed to parse WebSocket message', timestamp: new Date() });
 		}
 	}

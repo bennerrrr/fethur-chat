@@ -150,53 +150,86 @@
 
 	async function selectChannel(channel: Channel) {
 		try {
-			console.log('Selecting channel:', channel);
+			console.log('🎯 [CHAT PAGE] Selecting channel:', {
+				channelId: channel.id,
+				channelName: channel.name,
+				channelType: channel.type
+			});
+			
 			appActions.setCurrentChannel(channel);
 			
 			// Set current channel in chat store
+			console.log('🎯 [CHAT PAGE] Setting current channel in chat store:', channel.id);
 			chatActions.setCurrentChannel(channel.id);
 			
 			// Load messages for the channel
+			console.log('🔄 [CHAT PAGE] Loading messages for channel:', channel.id);
 			await chatActions.loadMessages(channel.id);
 			
 			// Join channel via WebSocket
 			if (wsClient.isConnected()) {
+				console.log('🔗 [CHAT PAGE] Joining channel via WebSocket:', channel.id);
 				wsClient.joinChannel(channel.id);
+			} else {
+				console.log('❌ [CHAT PAGE] WebSocket not connected, cannot join channel');
 			}
 		} catch (err) {
-			console.error('Failed to load messages:', err);
+			console.error('❌ [CHAT PAGE] Failed to load messages:', err);
 		}
 	}
 
 	async function connectWebSocket(token: string) {
 		try {
+			console.log('🔗 [CHAT PAGE] Connecting to WebSocket...');
 			await wsClient.connect(token);
+			console.log('✅ [CHAT PAGE] WebSocket connected successfully');
 			appActions.setConnectionStatus(true);
 		} catch (err) {
-			console.error('Failed to connect WebSocket:', err);
+			console.error('❌ [CHAT PAGE] Failed to connect WebSocket:', err);
 			appActions.setConnectionStatus(false);
 		}
 	}
 
 	function setupWebSocketListeners() {
+		console.log('🔧 [CHAT PAGE] Setting up WebSocket listeners');
+		
 		// Listen for new messages
 		wsClient.on('message', (data: unknown) => {
+			console.log('📨 [CHAT PAGE] Message event received:', data);
 			const messageEvent = data as { type: string; channelId: number; message: Message };
+			
+			console.log('🔍 [CHAT PAGE] Checking message event:', {
+				eventType: messageEvent.type,
+				eventChannelId: messageEvent.channelId,
+				currentChannelId: currentChannel?.id,
+				messageId: messageEvent.message?.id
+			});
+			
 			if (messageEvent.type === 'message_created' && messageEvent.channelId === currentChannel?.id) {
+				console.log('✅ [CHAT PAGE] Adding message to chat store');
 				chatActions.addMessage(messageEvent.message);
+			} else {
+				console.log('❌ [CHAT PAGE] Message not for current channel or wrong type:', {
+					eventType: messageEvent.type,
+					eventChannelId: messageEvent.channelId,
+					currentChannelId: currentChannel?.id,
+					shouldAdd: messageEvent.type === 'message_created' && messageEvent.channelId === currentChannel?.id
+				});
 			}
 		});
 
 		// Listen for user events
 		wsClient.on('user', (data) => {
-			console.log('User event:', data);
+			console.log('👥 [CHAT PAGE] User event:', data);
 			// Update user status if needed
 		});
 
 		// Listen for typing events
 		wsClient.on('typing', (data: unknown) => {
+			console.log('⌨️ [CHAT PAGE] Typing event:', data);
 			const typingEvent = data as { channelId: number; userId: number; username: string; type: string };
 			if (typingEvent.channelId === currentChannel?.id) {
+				console.log('✅ [CHAT PAGE] Adding typing indicator');
 				chatActions.updateTypingUsers({
 					type: typingEvent.type as 'typing_start' | 'typing_stop',
 					timestamp: new Date(),
@@ -206,18 +239,28 @@
 						channelId: typingEvent.channelId
 					}
 				});
+			} else {
+				console.log('❌ [CHAT PAGE] Typing event not for current channel');
 			}
 		});
 
 		// Listen for connection events
 		wsClient.on('connected', () => {
-			console.log('WebSocket connected');
+			console.log('✅ [CHAT PAGE] WebSocket connected');
 			appActions.setConnectionStatus(true);
 		});
 
 		wsClient.on('disconnected', () => {
-			console.log('WebSocket disconnected');
+			console.log('❌ [CHAT PAGE] WebSocket disconnected');
 			appActions.setConnectionStatus(false);
+		});
+		
+		wsClient.on('error', (error) => {
+			console.error('❌ [CHAT PAGE] WebSocket error:', error);
+		});
+		
+		wsClient.on('unknown', (data) => {
+			console.log('❓ [CHAT PAGE] Unknown WebSocket event:', data);
 		});
 	}
 
