@@ -24,7 +24,7 @@ warning() {
     echo -e "${YELLOW}[WARNING]${NC} $1"
 }
 
-log "🚀 Starting Feathur with HTTPS support..."
+log "🚀 Starting Feathur with HTTPS support and Voice Hub monitoring..."
 
 # Function to kill processes more thoroughly
 kill_processes() {
@@ -33,6 +33,7 @@ kill_processes() {
     # Kill by process name
     pkill -f "go run cmd/server/main.go" 2>/dev/null || true
     pkill -f "pnpm dev" 2>/dev/null || true
+    pkill -f "npm run dev" 2>/dev/null || true
     pkill -f "vite" 2>/dev/null || true
     
     # Kill by port if lsof is available
@@ -54,9 +55,9 @@ kill_processes() {
         pkill -9 -f "go run cmd/server/main.go" 2>/dev/null || true
     fi
     
-    if pgrep -f "pnpm dev" > /dev/null; then
+    if pgrep -f "pnpm dev\|npm run dev" > /dev/null; then
         error "Frontend process still running, force killing..."
-        pkill -9 -f "pnpm dev" 2>/dev/null || true
+        pkill -9 -f "pnpm dev\|npm run dev" 2>/dev/null || true
     fi
 }
 
@@ -89,7 +90,7 @@ mkdir -p logs
 kill_processes
 
 # Start backend server
-log "🔧 Starting backend server..."
+log "🔧 Starting backend server with Voice Hub..."
 cd server || { error "Failed to change to server directory"; exit 1; }
 go run cmd/server/main.go > ../logs/backend.log 2>&1 &
 BACKEND_PID=$!
@@ -98,28 +99,44 @@ cd .. || { error "Failed to return to root directory"; exit 1; }
 # Wait for backend to start with retry logic
 log "⏳ Waiting for backend to start..."
 BACKEND_READY=false
-for i in {1..15}; do
+VOICE_HUB_READY=false
+for i in {1..20}; do
     # Check if the process is still running
     if ! kill -0 $BACKEND_PID 2>/dev/null; then
         error "Backend process died unexpectedly"
         error "Check logs/backend.log for details"
+        tail -n 20 logs/backend.log
         exit 1
     fi
     
     # Check if the service is responding
     if curl -s http://localhost:8081/health > /dev/null 2>&1; then
         BACKEND_READY=true
+        log "Backend health check passed"
+        
+        # Check if voice hub started
+        if grep -q "Voice hub started" logs/backend.log 2>/dev/null; then
+            VOICE_HUB_READY=true
+            log "Voice hub detected in logs"
+        fi
+        
         break
     fi
-    log "Attempt $i/15: Backend not ready yet..."
+    log "Attempt $i/20: Backend not ready yet..."
     sleep 3
 done
 
 if [[ "$BACKEND_READY" == "true" ]]; then
     success "Backend server is running on http://localhost:8081"
+    if [[ "$VOICE_HUB_READY" == "true" ]]; then
+        success "Voice Hub is running"
+    else
+        warning "Voice Hub status unclear - check logs/backend.log"
+    fi
 else
-    error "Backend server failed to start after 15 attempts"
+    error "Backend server failed to start after 20 attempts"
     error "Check logs/backend.log for details"
+    tail -n 30 logs/backend.log
     exit 1
 fi
 
@@ -133,18 +150,28 @@ echo "PUBLIC_WS_URL=wss://localhost:5173" >> .env
 echo "PUBLIC_DEV_MODE=true" >> .env
 echo "PUBLIC_LOG_LEVEL=debug" >> .env
 
-pnpm dev > ../../logs/frontend.log 2>&1 &
-FRONTEND_PID=$!
+# Try pnpm first, fallback to npm
+if command -v pnpm >/dev/null 2>&1; then
+    log "Using pnpm to start frontend..."
+    pnpm dev > ../../logs/frontend.log 2>&1 &
+    FRONTEND_PID=$!
+else
+    log "Using npm to start frontend..."
+    npm run dev > ../../logs/frontend.log 2>&1 &
+    FRONTEND_PID=$!
+fi
+
 cd ../.. || { error "Failed to return to root directory"; exit 1; }
 
 # Wait for frontend to start with retry logic
 log "⏳ Waiting for frontend to start..."
 FRONTEND_READY=false
-for i in {1..20}; do
+for i in {1..25}; do
     # Check if the process is still running
     if ! kill -0 $FRONTEND_PID 2>/dev/null; then
         error "Frontend process died unexpectedly"
         error "Check logs/frontend.log for details"
+        tail -n 20 logs/frontend.log
         exit 1
     fi
     
@@ -153,7 +180,7 @@ for i in {1..20}; do
         FRONTEND_READY=true
         break
     fi
-    log "Attempt $i/20: Frontend not ready yet..."
+    log "Attempt $i/25: Frontend not ready yet..."
     sleep 3
 done
 
@@ -162,8 +189,6 @@ if [[ "$FRONTEND_READY" == "true" ]]; then
 else
     warning "Frontend may not be fully ready, but continuing..."
 fi
-
-
 
 echo ""
 success "🎉 Feathur is now running with HTTPS!"
@@ -200,9 +225,9 @@ cleanup() {
         pkill -9 -f "go run cmd/server/main.go" 2>/dev/null || true
     fi
     
-    if pgrep -f "pnpm dev" > /dev/null; then
+    if pgrep -f "pnpm dev\|npm run dev" > /dev/null; then
         log "Force killing frontend..."
-        pkill -9 -f "pnpm dev" 2>/dev/null || true
+        pkill -9 -f "pnpm dev\|npm run dev" 2>/dev/null || true
     fi
     
     # Kill by port as well if lsof is available
@@ -225,16 +250,39 @@ show_status() {
     echo ""
     log "📊 Service Status:"
     
+    # Backend status
     if curl -s http://localhost:8081/health > /dev/null 2>&1; then
         echo -e "  ${GREEN}✓${NC} Backend (http://localhost:8081)"
+        
+        # Check voice hub status
+        if grep -q "Voice hub started" logs/backend.log 2>/dev/null; then
+            echo -e "  ${GREEN}✓${NC} Voice Hub (running)"
+            
+            # Check for recent voice hub activity
+            if grep -q "Voice hub: processing message" logs/backend.log 2>/dev/null; then
+                echo -e "  ${GREEN}✓${NC} Voice Hub (processing messages)"
+            else
+                echo -e "  ${YELLOW}⚠${NC} Voice Hub (no recent message processing)"
+            fi
+        else
+            echo -e "  ${RED}✗${NC} Voice Hub (not detected)"
+        fi
     else
         echo -e "  ${RED}✗${NC} Backend (http://localhost:8081)"
     fi
     
+    # Frontend status
     if curl -k -s https://localhost:5173 > /dev/null 2>&1 || curl -s http://localhost:5173 > /dev/null 2>&1; then
         echo -e "  ${GREEN}✓${NC} Frontend (https://localhost:5173)"
     else
         echo -e "  ${RED}✗${NC} Frontend (https://localhost:5173)"
+    fi
+    
+    # Show recent voice activity if any
+    if grep -q "join-channel\|channel-joined\|speaking" logs/backend.log 2>/dev/null; then
+        echo ""
+        log "🎤 Recent Voice Activity:"
+        tail -n 5 logs/backend.log | grep -E "(join-channel|channel-joined|speaking|Voice hub)" | head -n 3
     fi
 }
 

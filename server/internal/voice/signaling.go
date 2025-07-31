@@ -79,13 +79,17 @@ func NewVoiceHub() *VoiceHub {
 
 // Run starts the voice hub
 func (h *VoiceHub) Run() {
+	log.Printf("Voice hub started")
 	for {
 		select {
 		case client := <-h.register:
+			log.Printf("Voice hub: processing register for user %d", client.ID)
 			h.handleRegister(client)
 		case client := <-h.unregister:
+			log.Printf("Voice hub: processing unregister for user %d", client.ID)
 			h.handleUnregister(client)
 		case message := <-h.messages:
+			log.Printf("Voice hub: processing message type=%s from user=%d", message.Type, message.UserID)
 			h.handleMessage(message)
 		}
 	}
@@ -93,11 +97,16 @@ func (h *VoiceHub) Run() {
 
 // HandleWebSocket handles WebSocket connections for voice
 func (h *VoiceHub) HandleWebSocket(c *gin.Context) {
+	log.Printf("Voice WebSocket connection attempt from %s", c.Request.RemoteAddr)
+
 	// Extract user info from JWT token
 	userID := c.GetInt("user_id")
 	username := c.GetString("username")
 
+	log.Printf("Voice WebSocket auth - UserID: %d, Username: %s", userID, username)
+
 	if userID == 0 {
+		log.Printf("Voice WebSocket unauthorized - no user ID")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
@@ -108,6 +117,8 @@ func (h *VoiceHub) HandleWebSocket(c *gin.Context) {
 		log.Printf("Failed to upgrade voice WebSocket: %v", err)
 		return
 	}
+
+	log.Printf("Voice WebSocket upgraded successfully for user %d", userID)
 
 	// Create voice client
 	client := &VoiceClient{
@@ -123,7 +134,13 @@ func (h *VoiceHub) HandleWebSocket(c *gin.Context) {
 	}
 
 	// Register client
-	h.register <- client
+	log.Printf("Attempting to register voice client for user %d", userID)
+	select {
+	case h.register <- client:
+		log.Printf("Successfully sent register message for user %d", userID)
+	default:
+		log.Printf("ERROR: Register channel full for user %d", userID)
+	}
 
 	// Start client goroutines
 	go client.readPump()
@@ -132,19 +149,24 @@ func (h *VoiceHub) HandleWebSocket(c *gin.Context) {
 
 // handleRegister registers a new voice client
 func (h *VoiceHub) handleRegister(client *VoiceClient) {
-       // Check for an existing client outside the lock to avoid deadlock
-       h.mutex.Lock()
-       existing := h.clients[client.ID]
-       h.mutex.Unlock()
+	// Check for an existing client outside the lock to avoid deadlock
+	h.mutex.Lock()
+	existing := h.clients[client.ID]
+	h.mutex.Unlock()
 
-       if existing != nil {
-               log.Printf("Replacing existing voice client for user %d", client.ID)
-               h.handleUnregister(existing)
-       }
+	if existing != nil {
+		log.Printf("Replacing existing voice client for user %d", client.ID)
+		// Send unregister message to avoid deadlock
+		select {
+		case h.unregister <- existing:
+		default:
+			log.Printf("Warning: unregister channel full for user %d", client.ID)
+		}
+	}
 
-       h.mutex.Lock()
-       h.clients[client.ID] = client
-       h.mutex.Unlock()
+	h.mutex.Lock()
+	h.clients[client.ID] = client
+	h.mutex.Unlock()
 	log.Printf("Voice client registered: user %d (%s)", client.ID, client.Username)
 
 	// Send welcome message
@@ -168,30 +190,38 @@ func (h *VoiceHub) handleUnregister(client *VoiceClient) {
 	// Remove from clients
 	delete(h.clients, client.ID)
 
-	// Remove from channel
+	// Get channel info before releasing hub lock
+	var channel *VoiceChannel
+	var channelExists bool
 	if client.channelID != 0 {
-		if channel, exists := h.channels[client.channelID]; exists {
-			channel.mutex.Lock()
-			delete(channel.Clients, client.ID)
-			channel.mutex.Unlock()
-
-			// Notify other clients in channel
-			h.broadcastToChannel(client.channelID, &VoiceMessage{
-				Type:      "user-left",
-				ChannelID: client.channelID,
-				UserID:    client.ID,
-				Username:  client.Username,
-				Timestamp: time.Now(),
-			}, client.ID)
-
-			// Remove empty channels
-			if len(channel.Clients) == 0 {
-				delete(h.channels, client.channelID)
-				log.Printf("Removed empty voice channel %d", client.channelID)
-			}
-		}
+		channel, channelExists = h.channels[client.channelID]
 	}
 	h.mutex.Unlock()
+
+	// Handle channel operations outside of hub lock to prevent deadlock
+	if channelExists && channel != nil {
+		channel.mutex.Lock()
+		delete(channel.Clients, client.ID)
+		clientCount := len(channel.Clients)
+		channel.mutex.Unlock()
+
+		// Notify other clients in channel
+		h.broadcastToChannel(client.channelID, &VoiceMessage{
+			Type:      "user-left",
+			ChannelID: client.channelID,
+			UserID:    client.ID,
+			Username:  client.Username,
+			Timestamp: time.Now(),
+		}, client.ID)
+
+		// Remove empty channels
+		if clientCount == 0 {
+			h.mutex.Lock()
+			delete(h.channels, client.channelID)
+			h.mutex.Unlock()
+			log.Printf("Removed empty voice channel %d", client.channelID)
+		}
+	}
 
 	// Close connection
 	close(client.send)
@@ -204,10 +234,14 @@ func (h *VoiceHub) handleUnregister(client *VoiceClient) {
 
 // handleMessage handles incoming voice messages
 func (h *VoiceHub) handleMessage(message *VoiceMessage) {
+	log.Printf("Processing voice message: type=%s, user=%d, channel=%d", message.Type, message.UserID, message.ChannelID)
+
 	switch message.Type {
 	case "join-channel":
+		log.Printf("Handling join-channel for user %d, channel %d", message.UserID, message.ChannelID)
 		h.handleJoinChannel(message)
 	case "leave-channel":
+		log.Printf("Handling leave-channel for user %d, channel %d", message.UserID, message.ChannelID)
 		h.handleLeaveChannel(message)
 	case "offer", "answer", "ice-candidate":
 		h.relayToTarget(message)
@@ -217,6 +251,9 @@ func (h *VoiceHub) handleMessage(message *VoiceMessage) {
 		h.handleSpeaking(message)
 	case "ping":
 		h.handlePing(message)
+	case "pong":
+		// Handle pong response (no action needed, just acknowledge)
+		break
 	default:
 		log.Printf("Unknown voice message type: %s", message.Type)
 	}
@@ -224,25 +261,28 @@ func (h *VoiceHub) handleMessage(message *VoiceMessage) {
 
 // handleJoinChannel handles joining a voice channel
 func (h *VoiceHub) handleJoinChannel(message *VoiceMessage) {
-	h.mutex.Lock()
-	defer h.mutex.Unlock()
+	log.Printf("handleJoinChannel: Starting for user %d, channel %d", message.UserID, message.ChannelID)
 
+	// Get client without locking the hub mutex
+	h.mutex.RLock()
 	client, exists := h.clients[message.UserID]
+	h.mutex.RUnlock()
+
 	if !exists {
+		log.Printf("handleJoinChannel: ERROR - Client %d not found in hub", message.UserID)
 		return
 	}
 
-	// Leave current channel if any
+	log.Printf("handleJoinChannel: Found client %d, proceeding with join", message.UserID)
+
+	// Leave current channel if any (without hub mutex lock)
 	if client.channelID != 0 {
-		h.handleLeaveChannel(&VoiceMessage{
-			Type:      "leave-channel",
-			ChannelID: client.channelID,
-			UserID:    message.UserID,
-			Username:  message.Username,
-		})
+		log.Printf("handleJoinChannel: User %d leaving current channel %d", message.UserID, client.channelID)
+		h.handleLeaveChannelDirectly(client)
 	}
 
 	// Get or create channel
+	h.mutex.Lock()
 	channel, exists := h.channels[message.ChannelID]
 	if !exists {
 		channel = &VoiceChannel{
@@ -254,6 +294,7 @@ func (h *VoiceHub) handleJoinChannel(message *VoiceMessage) {
 		h.channels[message.ChannelID] = channel
 		log.Printf("Created voice channel %d", message.ChannelID)
 	}
+	h.mutex.Unlock()
 
 	// Add client to channel
 	channel.mutex.Lock()
@@ -276,7 +317,7 @@ func (h *VoiceHub) handleJoinChannel(message *VoiceMessage) {
 	}, message.UserID)
 
 	// Send channel info to joining client
-	client.sendMessage(&VoiceMessage{
+	channelJoinedMessage := &VoiceMessage{
 		Type:      "channel-joined",
 		ChannelID: message.ChannelID,
 		UserID:    message.UserID,
@@ -288,9 +329,56 @@ func (h *VoiceHub) handleJoinChannel(message *VoiceMessage) {
 			"clients":      h.getChannelClients(message.ChannelID),
 		},
 		Timestamp: time.Now(),
-	})
+	}
+
+	log.Printf("Sending channel-joined message to user %d: %+v", message.UserID, channelJoinedMessage)
+	client.sendMessage(channelJoinedMessage)
 
 	log.Printf("User %d joined voice channel %d", message.UserID, message.ChannelID)
+}
+
+// handleLeaveChannelDirectly handles leaving a channel without using the message channel (to avoid deadlocks)
+func (h *VoiceHub) handleLeaveChannelDirectly(client *VoiceClient) {
+	if client.channelID == 0 {
+		return
+	}
+
+	// Lock hub mutex to access channels
+	h.mutex.Lock()
+	channel, exists := h.channels[client.channelID]
+	h.mutex.Unlock()
+
+	if !exists {
+		return
+	}
+
+	// Remove client from channel
+	channel.mutex.Lock()
+	delete(channel.Clients, client.ID)
+	channel.mutex.Unlock()
+
+	// Notify other clients in channel
+	h.broadcastToChannel(client.channelID, &VoiceMessage{
+		Type:      "user-left",
+		ChannelID: client.channelID,
+		UserID:    client.ID,
+		Username:  client.Username,
+		Timestamp: time.Now(),
+	}, client.ID)
+
+	// Remove empty channels
+	if len(channel.Clients) == 0 {
+		delete(h.channels, client.channelID)
+		log.Printf("Removed empty voice channel %d", client.channelID)
+	}
+
+	// Clear client's channel info
+	client.mutex.Lock()
+	client.channelID = 0
+	client.serverID = 0
+	client.mutex.Unlock()
+
+	log.Printf("User %d left voice channel %d", client.ID, client.channelID)
 }
 
 // handleLeaveChannel handles leaving a voice channel
@@ -405,12 +493,17 @@ func (h *VoiceHub) handlePing(message *VoiceMessage) {
 
 	client.mutex.Lock()
 	client.lastSeen = time.Now()
+	channelID := client.channelID
+	serverID := client.serverID
 	client.mutex.Unlock()
 
 	// Send pong response
 	client.sendMessage(&VoiceMessage{
 		Type:      "pong",
+		ChannelID: channelID,
+		ServerID:  serverID,
 		UserID:    message.UserID,
+		Username:  client.Username,
 		Timestamp: time.Now(),
 	})
 }
@@ -418,6 +511,7 @@ func (h *VoiceHub) handlePing(message *VoiceMessage) {
 // relayToTarget relays WebRTC signaling messages to specific targets
 func (h *VoiceHub) relayToTarget(message *VoiceMessage) {
 	if message.TargetID == nil {
+		log.Printf("WebRTC message missing target_id: %s", message.Type)
 		return
 	}
 
@@ -426,9 +520,11 @@ func (h *VoiceHub) relayToTarget(message *VoiceMessage) {
 	h.mutex.RUnlock()
 
 	if !exists {
+		log.Printf("WebRTC target client %d not found for %s message", *message.TargetID, message.Type)
 		return
 	}
 
+	log.Printf("Relaying %s message from user %d to user %d", message.Type, message.UserID, *message.TargetID)
 	targetClient.sendMessage(message)
 }
 
@@ -497,6 +593,8 @@ func (c *VoiceClient) readPump() {
 			break
 		}
 
+		log.Printf("Voice client %d received message: %s", c.ID, string(messageBytes))
+
 		var message VoiceMessage
 		if err := json.Unmarshal(messageBytes, &message); err != nil {
 			log.Printf("Failed to unmarshal voice message: %v", err)
@@ -508,8 +606,15 @@ func (c *VoiceClient) readPump() {
 		message.Username = c.Username
 		message.Timestamp = time.Now()
 
+		log.Printf("Voice client %d sending message to hub: type=%s, channel=%d", c.ID, message.Type, message.ChannelID)
+
 		// Send to hub for processing
-		c.hub.messages <- &message
+		select {
+		case c.hub.messages <- &message:
+			log.Printf("Voice client %d: message sent to hub successfully", c.ID)
+		default:
+			log.Printf("ERROR: Voice client %d: hub messages channel full", c.ID)
+		}
 	}
 }
 
@@ -535,9 +640,16 @@ func (c *VoiceClient) writePump() {
 			}
 		case <-ticker.C:
 			// Send ping to keep connection alive
+			c.mutex.RLock()
+			channelID := c.channelID
+			c.mutex.RUnlock()
+
 			pingMessage := &VoiceMessage{
 				Type:      "ping",
+				ChannelID: channelID,
+				ServerID:  c.serverID,
 				UserID:    c.ID,
+				Username:  c.Username,
 				Timestamp: time.Now(),
 			}
 			c.sendMessage(pingMessage)
@@ -553,8 +665,11 @@ func (c *VoiceClient) sendMessage(message *VoiceMessage) {
 		return
 	}
 
+	log.Printf("Sending message to voice client %d: type=%s, data=%s", c.ID, message.Type, string(messageBytes))
+
 	select {
 	case c.send <- messageBytes:
+		log.Printf("Message queued for voice client %d: type=%s", c.ID, message.Type)
 	default:
 		log.Printf("Voice client send buffer full for user %d", c.ID)
 	}

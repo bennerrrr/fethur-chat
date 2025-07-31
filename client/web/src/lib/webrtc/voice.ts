@@ -2,6 +2,7 @@ import { writable, type Writable } from 'svelte/store';
 
 export interface VoiceState {
 	isConnected: boolean;
+	isRegistered: boolean;
 	isMuted: boolean;
 	isDeafened: boolean;
 	isSpeaking: boolean;
@@ -50,6 +51,7 @@ class VoiceClient {
 	constructor() {
 		this.state = writable<VoiceState>({
 			isConnected: false,
+			isRegistered: false,
 			isMuted: false,
 			isDeafened: false,
 			isSpeaking: false,
@@ -127,35 +129,59 @@ class VoiceClient {
 		}
 
 		try {
+			console.log('Connecting to voice WebSocket...');
+			console.log('Token length:', token.length);
+			console.log('Server URL:', serverUrl);
+			
 			// Use relative URL in browser to leverage Vite's proxy
-			const wsUrl = typeof window !== 'undefined' ? `/voice?token=${encodeURIComponent(token)}` : `${serverUrl.replace('http', 'ws')}/voice?token=${encodeURIComponent(token)}`;
+			const wsUrl = typeof window !== 'undefined' ? `/voice?token=${encodeURIComponent(token)}` : `${serverUrl.replace('https://', 'wss://').replace('http://', 'ws://')}/voice?token=${encodeURIComponent(token)}`;
 			console.log('Connecting to voice WebSocket:', wsUrl);
+			
+			// Add connection timeout
+			const connectionTimeout = setTimeout(() => {
+				if (this.ws?.readyState === WebSocket.CONNECTING) {
+					console.error('Voice WebSocket connection timeout');
+					this.ws.close();
+				}
+			}, 10000); // 10 second timeout
+			
 			this.ws = new WebSocket(wsUrl);
 			
-			this.ws.onopen = () => {
-				console.log('Voice WebSocket connected successfully');
-				this.state.update(s => ({ ...s, isConnected: true, connectionQuality: 'excellent' }));
-				this.reconnectAttempts = 0;
-			};
+			// Wait for connection to be established
+			await new Promise<void>((resolve, reject) => {
+				this.ws!.onopen = () => {
+					console.log('Voice WebSocket connected successfully');
+					clearTimeout(connectionTimeout);
+					this.state.update(s => ({ ...s, isConnected: true, connectionQuality: 'excellent' }));
+					this.reconnectAttempts = 0;
+					resolve();
+				};
 
+				this.ws!.onerror = (error) => {
+					console.error('Voice WebSocket error:', error);
+					clearTimeout(connectionTimeout);
+					this.state.update(s => ({ ...s, connectionQuality: 'poor' }));
+					reject(error);
+				};
+
+				this.ws!.onclose = (event) => {
+					console.log('Voice WebSocket disconnected:', event.code, event.reason);
+					clearTimeout(connectionTimeout);
+					this.state.update(s => ({ ...s, isConnected: false, connectionQuality: 'disconnected' }));
+					this.handleDisconnect();
+					reject(new Error(`WebSocket closed: ${event.code} ${event.reason}`));
+				};
+			});
+
+			// Set up message handler after connection is established
 			this.ws.onmessage = (event) => {
+				console.log('Voice WebSocket message received:', event.data);
 				try {
 					const data = JSON.parse(event.data);
 					this.handleMessage(data);
 				} catch (error) {
 					console.error('Failed to parse voice message:', error);
 				}
-			};
-
-			this.ws.onclose = (event) => {
-				console.log('Voice WebSocket disconnected:', event.code, event.reason);
-				this.state.update(s => ({ ...s, isConnected: false, connectionQuality: 'disconnected' }));
-				this.handleDisconnect();
-			};
-
-			this.ws.onerror = (error) => {
-				console.error('Voice WebSocket error:', error);
-				this.state.update(s => ({ ...s, connectionQuality: 'poor' }));
 			};
 
 		} catch (error) {
@@ -171,6 +197,14 @@ class VoiceClient {
 		});
 		this.peers.clear();
 		this.remoteStreams.clear();
+
+		// Reset state
+		this.state.update(s => ({
+			...s,
+			isConnected: false,
+			isRegistered: false,
+			connectionQuality: 'disconnected'
+		}));
 
 		// Attempt to reconnect
 		if (this.reconnectAttempts < this.maxReconnectAttempts) {
@@ -216,6 +250,13 @@ class VoiceClient {
 			case 'speaking':
 				this.handleSpeaking(message);
 				break;
+			case 'ping':
+				// Respond to ping with pong
+				this.sendMessage({
+					type: 'pong',
+					timestamp: new Date().toISOString()
+				});
+				break;
 			case 'pong':
 				// Handle pong response
 				break;
@@ -226,9 +267,12 @@ class VoiceClient {
 
 	private handleConnected(message: any) {
 		console.log('Connected to voice server');
+		// Mark as fully registered and ready to join channels
+		this.state.update(s => ({ ...s, isRegistered: true }));
 	}
 
-	private handleChannelJoined(message: any) {
+	private async handleChannelJoined(message: any) {
+		console.log('Received channel-joined message:', message);
 		const { channel_id, server_id, channel_name, clients } = message.data;
 		
 		this.state.update(s => ({
@@ -237,18 +281,51 @@ class VoiceClient {
 		}));
 
 		console.log(`Joined voice channel: ${channel_name} (${channel_id})`);
+		console.log('Current state after joining:', this.getState());
 		
-		// Initialize peer connections for existing clients
-		clients.forEach((client: any) => {
+		// Initialize peer connections for existing clients and create offers
+		for (const client of clients) {
 			if (client.user_id !== message.user_id) {
-				this.createPeerConnection(client.user_id.toString());
+				const peer = this.createPeerConnection(client.user_id.toString());
+				
+				// If we have a local stream, create and send an offer
+				if (this.localStream) {
+					try {
+						const offer = await peer.createOffer();
+						await peer.setLocalDescription(offer);
+						
+						this.sendMessage({
+							type: 'offer',
+							target_id: client.user_id,
+							data: offer
+						});
+					} catch (error) {
+						console.error('Error creating offer for existing client:', error);
+					}
+				}
 			}
-		});
+		}
 	}
 
-	private handleUserJoined(message: any) {
+	private async handleUserJoined(message: any) {
 		const peerId = message.user_id.toString();
-		this.createPeerConnection(peerId);
+		const peer = this.createPeerConnection(peerId);
+		
+		// If we have a local stream, create and send an offer
+		if (this.localStream) {
+			try {
+				const offer = await peer.createOffer();
+				await peer.setLocalDescription(offer);
+				
+				this.sendMessage({
+					type: 'offer',
+					target_id: message.user_id,
+					data: offer
+				});
+			} catch (error) {
+				console.error('Error creating offer:', error);
+			}
+		}
 	}
 
 	private handleUserLeft(message: any) {
@@ -258,18 +335,21 @@ class VoiceClient {
 
 	private async handleOffer(message: any) {
 		const peerId = message.user_id.toString();
-		const peer = this.peers.get(peerId);
+		let peer = this.peers.get(peerId);
 		
+		// Create peer connection if it doesn't exist
 		if (!peer) {
-			console.warn('Received offer for unknown peer:', peerId);
-			return;
+			console.log('Creating peer connection for incoming offer from:', peerId);
+			peer = this.createPeerConnection(peerId);
 		}
 
 		try {
+			console.log('Setting remote description for offer from:', peerId);
 			await peer.setRemoteDescription(new RTCSessionDescription(message.data));
 			const answer = await peer.createAnswer();
 			await peer.setLocalDescription(answer);
 			
+			console.log('Sending answer to:', peerId);
 			this.sendMessage({
 				type: 'answer',
 				target_id: message.user_id,
@@ -290,6 +370,7 @@ class VoiceClient {
 		}
 
 		try {
+			console.log(`Setting remote description (answer) for peer ${peerId}`);
 			await peer.setRemoteDescription(new RTCSessionDescription(message.data));
 		} catch (error) {
 			console.error('Error handling answer:', error);
@@ -306,6 +387,7 @@ class VoiceClient {
 		}
 
 		try {
+			console.log(`Adding ICE candidate from peer ${peerId}:`, message.data.type);
 			await peer.addIceCandidate(new RTCIceCandidate(message.data));
 		} catch (error) {
 			console.error('Error handling ICE candidate:', error);
@@ -328,54 +410,121 @@ class VoiceClient {
 	}
 
 	private sendMessage(message: any) {
+		console.log('Sending voice message:', message);
 		if (this.ws?.readyState === WebSocket.OPEN) {
-			this.ws.send(JSON.stringify(message));
+			const messageStr = JSON.stringify(message);
+			console.log('Sending WebSocket message:', messageStr);
+			try {
+				this.ws.send(messageStr);
+				console.log('Voice message sent successfully');
+			} catch (error) {
+				console.error('Failed to send voice message:', error);
+			}
 		} else {
-			console.warn('Voice WebSocket not connected');
+			console.warn('Voice WebSocket not connected. State:', this.ws?.readyState);
 		}
 	}
 
 	async joinChannel(channelId: number, serverId: number): Promise<void> {
+		console.log('Attempting to join voice channel:', channelId, 'server:', serverId);
+		console.log('WebSocket state:', this.ws?.readyState);
+		
 		if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+			console.error('Voice WebSocket not connected. State:', this.ws?.readyState);
 			throw new Error('Voice WebSocket not connected');
 		}
 
-		this.sendMessage({
+		// Wait for registration to complete
+		let state = this.getState();
+		if (!state.isRegistered) {
+			console.log('Waiting for registration to complete...');
+			await new Promise<void>((resolve) => {
+				const unsubscribe = this.state.subscribe((s) => {
+					if (s.isRegistered) {
+						unsubscribe();
+						resolve();
+					}
+				});
+				
+				// Timeout after 5 seconds
+				setTimeout(() => {
+					unsubscribe();
+					resolve();
+				}, 5000);
+			});
+		}
+
+		// Start local stream first if not already started
+		if (!this.localStream) {
+			console.log('Starting local stream...');
+			await this.startLocalStream();
+		}
+
+		console.log('Sending join-channel message...');
+		const joinMessage = {
 			type: 'join-channel',
 			channel_id: channelId,
 			server_id: serverId
-		});
-
-		// Start local stream if not already started
-		if (!this.localStream) {
-			await this.startLocalStream();
-		}
+		};
+		console.log('Join message:', joinMessage);
+		this.sendMessage(joinMessage);
+		console.log('Join message sent successfully');
 	}
 
 	async leaveChannel(): Promise<void> {
 		const state = this.getState();
 		if (!state.currentChannelId) {
+			console.log('No channel to leave');
 			return;
 		}
 
-		this.sendMessage({
-			type: 'leave-channel',
-			channel_id: state.currentChannelId
-		});
+		console.log('Leaving voice channel:', state.currentChannelId);
+
+		// Stop voice activity detection first to prevent further speaking messages
+		this.cleanupVoiceActivityDetection();
+
+		// Send leave message to server if WebSocket is still open
+		if (this.ws?.readyState === WebSocket.OPEN) {
+			this.sendMessage({
+				type: 'leave-channel',
+				channel_id: state.currentChannelId
+			});
+		}
 
 		// Clean up peer connections
-		this.peers.forEach(peer => {
+		this.peers.forEach((peer, peerId) => {
+			console.log('Closing peer connection:', peerId);
 			peer.close();
+			// Remove audio element for this peer
+			const audioElement = document.getElementById(`remote-audio-${peerId}`);
+			if (audioElement) {
+				audioElement.remove();
+			}
 		});
 		this.peers.clear();
 		this.remoteStreams.clear();
 
+		// Stop local stream
+		if (this.localStream) {
+			this.localStream.getTracks().forEach(track => {
+				console.log('Stopping local audio track');
+				track.stop();
+			});
+			this.localStream = null;
+		}
+
+		// Update state
 		this.state.update(s => ({
 			...s,
 			currentChannelId: null,
 			peers: new Map(),
-			remoteStreams: new Map()
+			remoteStreams: new Map(),
+			localStream: null,
+			isSpeaking: false,
+			isConnected: false
 		}));
+
+		console.log('Successfully left voice channel');
 	}
 
 	async startLocalStream(): Promise<MediaStream | null> {
@@ -403,6 +552,7 @@ class VoiceClient {
 				this.setupVoiceActivityDetection(stream);
 			}
 
+			console.log('✅ Local audio stream started successfully');
 			return stream;
 		} catch (error) {
 			console.error('Failed to start local stream:', error);
@@ -449,11 +599,81 @@ class VoiceClient {
 	}
 
 	private cleanupVoiceActivityDetection() {
+		// Clear speaking timeout
+		if (this.speakingTimeout) {
+			clearTimeout(this.speakingTimeout);
+			this.speakingTimeout = null;
+		}
+
+		// Clean up voice activity detector
 		if (this.voiceActivityDetector) {
-			this.voiceActivityDetector.scriptProcessor.disconnect();
-			this.voiceActivityDetector.microphone.disconnect();
-			this.voiceActivityDetector.audioContext.close();
+			try {
+				this.voiceActivityDetector.scriptProcessor.disconnect();
+				this.voiceActivityDetector.microphone.disconnect();
+				this.voiceActivityDetector.audioContext.close();
+			} catch (error) {
+				console.warn('Error cleaning up voice activity detection:', error);
+			}
 			this.voiceActivityDetector = null;
+		}
+
+		// Reset speaking state
+		this.state.update(s => ({ ...s, isSpeaking: false }));
+	}
+
+	private playRemoteAudio(stream: MediaStream, peerId: string) {
+		try {
+			// Create audio element for this peer
+			const audio = document.createElement('audio');
+			audio.id = `remote-audio-${peerId}`;
+			audio.autoplay = true;
+			audio.playsInline = true;
+			
+			// Set the stream as the audio source
+			audio.srcObject = stream;
+			
+			// Add to DOM (hidden)
+			audio.style.display = 'none';
+			document.body.appendChild(audio);
+			
+			// Handle audio play errors
+			audio.onerror = (error) => {
+				console.error('Error playing remote audio for peer', peerId, ':', error);
+			};
+			
+			// Handle audio play success
+			audio.onplay = () => {
+				console.log('Successfully playing remote audio for peer:', peerId);
+			};
+			
+			// Handle audio ended
+			audio.onended = () => {
+				console.log('Remote audio ended for peer:', peerId);
+				// Remove audio element
+				if (audio.parentNode) {
+					audio.parentNode.removeChild(audio);
+				}
+			};
+			
+			// Handle audio load start
+			audio.onloadstart = () => {
+				console.log('Audio loading started for peer:', peerId);
+			};
+			
+			// Handle audio can play
+			audio.oncanplay = () => {
+				console.log('Audio can play for peer:', peerId);
+				// Try to play the audio
+				audio.play().catch(error => {
+					console.error('Failed to autoplay audio for peer', peerId, ':', error);
+					// This might be due to browser autoplay policy
+					console.log('Audio autoplay blocked. User interaction required.');
+				});
+			};
+			
+			console.log('Created audio element for peer:', peerId);
+		} catch (error) {
+			console.error('Error setting up remote audio playback for peer', peerId, ':', error);
 		}
 	}
 
@@ -474,22 +694,29 @@ class VoiceClient {
 
 		// Handle incoming tracks
 		peer.ontrack = (event) => {
+			console.log(`Received remote stream from peer ${peerId}`);
 			const stream = event.streams[0];
 			this.remoteStreams.set(peerId, stream);
 			this.state.update(s => ({
 				...s,
 				remoteStreams: new Map(this.remoteStreams)
 			}));
+			
+			// Play the remote audio
+			this.playRemoteAudio(stream, peerId);
 		};
 
 		// Handle ICE candidates
 		peer.onicecandidate = (event) => {
 			if (event.candidate) {
+				console.log(`Sending ICE candidate to peer ${peerId}:`, event.candidate.type);
 				this.sendMessage({
 					type: 'ice-candidate',
 					target_id: parseInt(peerId),
 					data: event.candidate
 				});
+			} else {
+				console.log(`ICE candidate gathering completed for peer ${peerId}`);
 			}
 		};
 
@@ -498,10 +725,22 @@ class VoiceClient {
 			console.log(`Peer ${peerId} connection state:`, peer.connectionState);
 			
 			if (peer.connectionState === 'connected') {
+				console.log(`✅ WebRTC connection established with peer ${peerId}`);
 				this.state.update(s => ({ ...s, connectionQuality: 'excellent' }));
 			} else if (peer.connectionState === 'failed' || peer.connectionState === 'disconnected') {
+				console.log(`❌ WebRTC connection failed/disconnected with peer ${peerId}`);
 				this.state.update(s => ({ ...s, connectionQuality: 'poor' }));
 			}
+		};
+
+		// Handle ICE connection state changes
+		peer.oniceconnectionstatechange = () => {
+			console.log(`Peer ${peerId} ICE connection state:`, peer.iceConnectionState);
+		};
+
+		// Handle ICE gathering state changes
+		peer.onicegatheringstatechange = () => {
+			console.log(`Peer ${peerId} ICE gathering state:`, peer.iceGatheringState);
 		};
 
 		this.peers.set(peerId, peer);
@@ -520,6 +759,13 @@ class VoiceClient {
 			this.peers.delete(peerId);
 			this.remoteStreams.delete(peerId);
 			
+			// Remove audio element for this peer
+			const audioElement = document.getElementById(`remote-audio-${peerId}`);
+			if (audioElement) {
+				audioElement.remove();
+				console.log('Removed audio element for peer:', peerId);
+			}
+			
 			this.state.update(s => ({
 				...s,
 				peers: new Map(this.peers),
@@ -537,16 +783,32 @@ class VoiceClient {
 
 		this.state.update(s => ({ ...s, isMuted: muted }));
 
+		// Get current state to include channel information
+		const state = this.getState();
+
 		this.sendMessage({
-			type: muted ? 'mute' : 'unmute'
+			type: muted ? 'mute' : 'unmute',
+			channel_id: state.currentChannelId || 0
 		});
 	}
 
 	setDeafened(deafened: boolean): void {
 		this.state.update(s => ({ ...s, isDeafened: deafened }));
 
+		// Mute/unmute all remote audio elements
+		this.peers.forEach((peer, peerId) => {
+			const audioElement = document.getElementById(`remote-audio-${peerId}`) as HTMLAudioElement;
+			if (audioElement) {
+				audioElement.muted = deafened;
+			}
+		});
+
+		// Get current state to include channel information
+		const state = this.getState();
+
 		this.sendMessage({
-			type: deafened ? 'deafen' : 'undeafen'
+			type: deafened ? 'deafen' : 'undeafen',
+			channel_id: state.currentChannelId || 0
 		});
 	}
 
@@ -558,11 +820,22 @@ class VoiceClient {
 			clearTimeout(this.speakingTimeout);
 		}
 
-		// Send speaking state
-		this.sendMessage({
-			type: 'speaking',
-			data: speaking
-		});
+		// Get current state to include channel information
+		const state = this.getState();
+		
+		console.log('setSpeaking called:', { speaking, state: { isConnected: state.isConnected, currentChannelId: state.currentChannelId, wsState: this.ws?.readyState } });
+		
+		// Only send speaking messages if we're connected and in a channel
+		if (state.isConnected && state.currentChannelId && this.ws?.readyState === WebSocket.OPEN) {
+			console.log('Sending speaking message with channel_id:', state.currentChannelId);
+			this.sendMessage({
+				type: 'speaking',
+				channel_id: state.currentChannelId,
+				data: speaking
+			});
+		} else {
+			console.log('Not sending speaking message - conditions not met');
+		}
 
 		// Auto-stop speaking after 500ms of silence
 		if (speaking) {
@@ -606,25 +879,48 @@ class VoiceClient {
 	}
 
 	disconnect(): void {
+		console.log('Disconnecting voice client completely...');
+		
+		// Stop voice activity detection first
 		this.cleanupVoiceActivityDetection();
 		
+		// Stop local stream
 		if (this.localStream) {
-			this.localStream.getTracks().forEach(track => track.stop());
+			this.localStream.getTracks().forEach(track => {
+				console.log('Stopping local audio track');
+				track.stop();
+			});
 			this.localStream = null;
 		}
 
-		this.peers.forEach(peer => peer.close());
+		// Clean up all peer connections and audio elements
+		this.peers.forEach((peer, peerId) => {
+			console.log('Closing peer connection:', peerId);
+			peer.close();
+			// Remove audio element for this peer
+			const audioElement = document.getElementById(`remote-audio-${peerId}`);
+			if (audioElement) {
+				audioElement.remove();
+			}
+		});
 		this.peers.clear();
 		this.remoteStreams.clear();
 
+		// Close WebSocket connection
 		if (this.ws) {
-			this.ws.close();
+			try {
+				this.ws.close();
+			} catch (error) {
+				console.warn('Error closing WebSocket:', error);
+			}
 			this.ws = null;
 		}
 
+		// Reset all state
 		this.state.update(s => ({
 			...s,
 			isConnected: false,
+			isRegistered: false,
 			isMuted: false,
 			isDeafened: false,
 			isSpeaking: false,
@@ -634,8 +930,23 @@ class VoiceClient {
 			remoteStreams: new Map(),
 			connectionQuality: 'disconnected'
 		}));
+
+		console.log('Voice client disconnected completely');
+	}
+
+	// Method to handle audio autoplay issues
+	handleAudioAutoplay(): void {
+		// Try to play all existing remote audio streams
+		this.remoteStreams.forEach((stream, peerId) => {
+			const audioElement = document.getElementById(`remote-audio-${peerId}`) as HTMLAudioElement;
+			if (audioElement && audioElement.paused) {
+				audioElement.play().catch(error => {
+					console.error('Failed to play audio for peer', peerId, 'after user interaction:', error);
+				});
+			}
+		});
 	}
 }
 
-// Export singleton instance
+	// Export singleton instance
 export const voiceClient = new VoiceClient(); 
