@@ -28,7 +28,7 @@ A modern, self-hosted communication platform featuring real-time chat, voice com
 - Fixed admin panel access issues
 
 ### ⚠️ **Known Issues**
-- **Voice Chat Registration**: Occasional timing issues with voice chat registration. If voice controls remain disabled, try refreshing the page or use browser console: `voiceClient.forceReRegistration()`. See [VOICE_CHAT_FIXES_SUMMARY.md](VOICE_CHAT_FIXES_SUMMARY.md) for details.
+- **Voice Chat Registration**: Previous timing issue has been resolved. Voice controls should enable automatically; see [VOICE_CHAT_FIXES_SUMMARY.md](VOICE_CHAT_FIXES_SUMMARY.md) for details.
 
 ## 🚀 Quick Start
 

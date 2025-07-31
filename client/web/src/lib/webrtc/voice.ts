@@ -156,60 +156,60 @@ class VoiceClient {
 				}
 			}, 5000); // 5 second timeout
 			
-			console.log('Creating WebSocket connection...');
-			this.ws = new WebSocket(wsUrl);
-			console.log('WebSocket created, readyState:', this.ws.readyState);
-			
-			// Wait for connection to be established
-			await new Promise<void>((resolve, reject) => {
-				this.ws!.onopen = () => {
-					console.log('Voice WebSocket connected successfully');
-					console.log('WebSocket readyState after open:', this.ws!.readyState);
-					clearTimeout(connectionTimeout);
-					this.state.update(s => ({ ...s, isConnected: true, connectionQuality: 'excellent' }));
-					this.reconnectAttempts = 0;
-					resolve();
-				};
+                        console.log('Creating WebSocket connection...');
+                        this.ws = new WebSocket(wsUrl);
+                        console.log('WebSocket created, readyState:', this.ws.readyState);
 
-				this.ws!.onerror = (error) => {
-					console.error('Voice WebSocket error:', error);
-					clearTimeout(connectionTimeout);
-					this.state.update(s => ({ ...s, connectionQuality: 'poor' }));
-					reject(error);
-				};
+                        // Set up message handler immediately to avoid missing early messages
+                        this.ws.onmessage = (event) => {
+                                console.log('=== WEBSOCKET MESSAGE RECEIVED ===');
+                                console.log('Raw WebSocket message received:', event.data);
+                                console.log('Message type:', typeof event.data);
+                                console.log('Message length:', event.data.length);
 
-				this.ws!.onclose = (event) => {
-					console.log('Voice WebSocket disconnected:', event.code, event.reason);
-					clearTimeout(connectionTimeout);
-					this.state.update(s => ({ ...s, isConnected: false, connectionQuality: 'disconnected' }));
-					this.handleDisconnect();
-					reject(new Error(`WebSocket closed: ${event.code} ${event.reason}`));
-				};
-			});
+                                try {
+                                        const data = JSON.parse(event.data);
+                                        console.log('Parsed WebSocket message:', data);
+                                        console.log('Message type field:', data.type);
+                                        this.handleMessage(data);
+                                } catch (error) {
+                                        console.error('Failed to parse voice message:', error);
+                                        console.error('Raw message was:', event.data);
+                                }
+                                console.log('=== END WEBSOCKET MESSAGE ===');
+                        };
 
-			// Set up message handler after connection is established
-			this.ws.onmessage = (event) => {
-				console.log('=== WEBSOCKET MESSAGE RECEIVED ===');
-				console.log('Raw WebSocket message received:', event.data);
-				console.log('Message type:', typeof event.data);
-				console.log('Message length:', event.data.length);
-				
-				try {
-					const data = JSON.parse(event.data);
-					console.log('Parsed WebSocket message:', data);
-					console.log('Message type field:', data.type);
-					this.handleMessage(data);
-				} catch (error) {
-					console.error('Failed to parse voice message:', error);
-					console.error('Raw message was:', event.data);
-				}
-				console.log('=== END WEBSOCKET MESSAGE ===');
-			};
+                        // Wait for connection to be established
+                        await new Promise<void>((resolve, reject) => {
+                                this.ws!.onopen = () => {
+                                        console.log('Voice WebSocket connected successfully');
+                                        console.log('WebSocket readyState after open:', this.ws!.readyState);
+                                        clearTimeout(connectionTimeout);
+                                        this.state.update(s => ({ ...s, isConnected: true, connectionQuality: 'excellent' }));
+                                        this.reconnectAttempts = 0;
+                                        resolve();
+                                };
 
-			// Wait a short moment for any immediate messages (like 'connected')
-			console.log('Waiting for immediate messages...');
-			await new Promise(resolve => setTimeout(resolve, 100));
-			console.log('=== VOICE CLIENT CONNECT END ===');
+                                this.ws!.onerror = (error) => {
+                                        console.error('Voice WebSocket error:', error);
+                                        clearTimeout(connectionTimeout);
+                                        this.state.update(s => ({ ...s, connectionQuality: 'poor' }));
+                                        reject(error);
+                                };
+
+                                this.ws!.onclose = (event) => {
+                                        console.log('Voice WebSocket disconnected:', event.code, event.reason);
+                                        clearTimeout(connectionTimeout);
+                                        this.state.update(s => ({ ...s, isConnected: false, connectionQuality: 'disconnected' }));
+                                        this.handleDisconnect();
+                                        reject(new Error(`WebSocket closed: ${event.code} ${event.reason}`));
+                                };
+                        });
+
+                        // Wait a short moment for any immediate messages (like 'connected')
+                        console.log('Waiting for immediate messages...');
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        console.log('=== VOICE CLIENT CONNECT END ===');
 
 		} catch (error) {
 			console.error('Failed to connect to voice server:', error);

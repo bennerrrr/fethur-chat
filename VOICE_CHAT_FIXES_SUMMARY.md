@@ -7,40 +7,17 @@ Fixed voice chat functionality where users were experiencing:
 - Backend deadlocks stopping voice hub message processing
 - Audio not being transmitted between users
 
-## ⚠️ **Current Known Issue**
+## ✅ **Voice Chat Registration Timing Error Resolved**
 
-### **Voice Chat Registration Timing Error**
-**Status**: Partially Resolved - Known Issue Remains
-**Commit**: `5409ae0` - 🔧 Fix voice chat registration timing and state management issues
+**Status**: Resolved
 
-**Problem**: Voice chat registration may occasionally fail due to timing issues between WebSocket connection establishment and client registration in the voice hub.
+**Summary**: A race condition between WebSocket connection establishment and client registration caused the server's initial `connected` message to be lost, leaving clients in an unregistered state.
 
-**Symptoms**:
-- Client shows `isConnected: true` but `isRegistered: false`
-- Voice controls remain disabled even after WebSocket connection
-- Users cannot join voice channels despite successful connection
-- Console shows "WebSocket is open but not registered" messages
+**Fix**:
+- Client now attaches the WebSocket message handler immediately upon creation to ensure early messages are processed.
+- Voice hub processes register and unregister events concurrently, reducing delay before the `connected` message is sent.
 
-**Root Cause**: Race condition between:
-1. WebSocket connection establishment
-2. Client registration in voice hub
-3. 'connected' message delivery to client
-
-**Workarounds**:
-1. **Manual Re-registration**: Use `forceReRegistration()` method in browser console
-2. **Page Refresh**: Refresh the page to re-establish connection
-3. **Wait and Retry**: Wait 2-3 seconds and try joining voice channel again
-
-**Debugging Methods Available**:
-- `voiceClient.checkAndFixRegistration()` - Check registration state
-- `voiceClient.triggerRegistration()` - Manually trigger registration
-- `voiceClient.forceReRegistration()` - Force re-registration
-- `voiceClient.debugState()` - Show detailed state information
-
-**Files Affected**:
-- `client/web/src/lib/webrtc/voice.ts` - Client-side registration logic
-- `server/internal/voice/signaling.go` - Server-side registration handling
-- `server/internal/websocket/websocket.go` - WebSocket connection management
+**Result**: Clients reliably register with the voice hub and can join voice channels without manual re-registration or page refreshes.
 
 ## ✅ **Fixes Implemented**
 
@@ -69,6 +46,12 @@ Fixed voice chat functionality where users were experiencing:
 **File**: `vc_debug.md`
 - **Added**: Comprehensive debugging guide for voice chat issues
 - **Includes**: Problem identification, testing procedures, and troubleshooting steps
+
+### **5. Registration Race Condition Fix**
+**Files**: `client/web/src/lib/webrtc/voice.ts`, `server/internal/voice/signaling.go`
+- **Issue**: `connected` message could be missed if sent before the client attached its handler and registration processing was serialized.
+- **Solution**: Attach WebSocket message handler immediately on client and process register/unregister events concurrently on the server.
+- **Result**: Reliable client registration without manual re-registration or delays.
 
 ## 🧪 **Testing Results**
 

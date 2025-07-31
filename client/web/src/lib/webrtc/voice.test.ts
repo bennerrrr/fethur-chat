@@ -227,28 +227,29 @@ describe('Voice Client', () => {
 			await expect(voiceClient['startLocalStream']()).rejects.toThrow('Permission denied');
 		});
 
-		it('should handle WebSocket connection errors gracefully', async () => {
-			// Mock WebSocket to throw error
-			const mockErrorWebSocket = {
-				readyState: 3, // CLOSED
-				send: vi.fn(),
-				close: vi.fn(),
-				addEventListener: vi.fn((event, handler) => {
-					if (event === 'error') {
-						setTimeout(() => handler(new Error('Connection failed')), 0);
-					}
-				}),
-				removeEventListener: vi.fn()
-			};
+                it('should handle WebSocket connection errors gracefully', async () => {
+                        // Mock WebSocket that immediately errors out
+                        const mockErrorWebSocket: any = {
+                                readyState: 3, // CLOSED
+                                send: vi.fn(),
+                                close: vi.fn(() => {
+                                        if (typeof mockErrorWebSocket.onclose === 'function') {
+                                                mockErrorWebSocket.onclose({ code: 1006, reason: 'error' });
+                                        }
+                                })
+                        };
 
-			(global.WebSocket as any) = vi.fn(() => mockErrorWebSocket);
+                        (global.WebSocket as any) = vi.fn(() => mockErrorWebSocket);
 
-			// The connect method should handle the error gracefully
-			await voiceClient.connect('test-token');
-			
-			// Verify that the error was handled (no exception thrown)
-			expect(voiceClient.getState().isConnected).toBe(false);
-		});
+                        setTimeout(() => {
+                                if (typeof mockErrorWebSocket.onerror === 'function') {
+                                        mockErrorWebSocket.onerror(new Error('Connection failed'));
+                                }
+                        }, 0);
+
+                        await expect(voiceClient.connect('test-token')).rejects.toBeDefined();
+                        expect(voiceClient.getState().isConnected).toBe(false);
+                });
 	});
 
 	describe('Voice Client Utilities', () => {

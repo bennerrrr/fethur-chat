@@ -81,18 +81,26 @@ func NewVoiceHub() *VoiceHub {
 // Run starts the voice hub
 func (h *VoiceHub) Run() {
 	log.Printf("Voice hub started")
-	for {
-		select {
-		case client := <-h.register:
+
+	// Process register and unregister events concurrently to reduce contention
+	go func() {
+		for client := range h.register {
 			log.Printf("Voice hub: processing register for user %d", client.ID)
 			h.handleRegister(client)
-		case client := <-h.unregister:
+		}
+	}()
+
+	go func() {
+		for client := range h.unregister {
 			log.Printf("Voice hub: processing unregister for user %d", client.ID)
 			h.handleUnregister(client)
-		case message := <-h.messages:
-			log.Printf("Voice hub: processing message type=%s from user=%d", message.Type, message.UserID)
-			h.handleMessage(message)
 		}
+	}()
+
+	// Main loop handles voice messages
+	for message := range h.messages {
+		log.Printf("Voice hub: processing message type=%s from user=%d", message.Type, message.UserID)
+		h.handleMessage(message)
 	}
 }
 
