@@ -27,6 +27,9 @@ A modern, self-hosted communication platform featuring real-time chat, voice com
 - Improved voice chat WebSocket connections
 - Fixed admin panel access issues
 
+### ⚠️ **Known Issues**
+- **Voice Chat Registration**: Occasional timing issues with voice chat registration. If voice controls remain disabled, try refreshing the page or use browser console: `voiceClient.forceReRegistration()`. See [VOICE_CHAT_FIXES_SUMMARY.md](VOICE_CHAT_FIXES_SUMMARY.md) for details.
+
 ## 🚀 Quick Start
 
 ### Using Docker (Recommended)
