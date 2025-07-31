@@ -1,5 +1,7 @@
 # 🎤 Voice Chat Troubleshooting Guide
 
+> Registration timing issues have been resolved in the latest update. If you still encounter problems, use the steps below.
+
 ## 🚨 **Common Voice Chat Issues**
 
 ### **Issue: Voice Controls Disabled After Connection**
