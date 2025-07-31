@@ -20,12 +20,13 @@
 	});
 
 	async function loadServerUsers() {
+		if (!server) return;
+		
 		try {
 			isLoading = true;
 			// Load users for the current server
-			const users = await apiClient.getUsers();
-			// Filter to show only users who are members of this server
-			// For now, show all users - this could be enhanced with server membership
+			const users = await apiClient.getServerUsers(server.id);
+			// Map the response to match the User interface
 			onlineUsers = users.map(user => ({
 				...user,
 				isOnline: user.isOnline || false

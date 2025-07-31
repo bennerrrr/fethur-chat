@@ -22,13 +22,9 @@ type Claims struct {
 }
 
 func NewService() *Service {
+	// For development, use a fixed secret so tokens remain valid across restarts
 	// In production, this should come from environment variables
-	secret := make([]byte, 32)
-	if _, err := rand.Read(secret); err != nil {
-		// In a real application, you might want to panic or handle this differently
-		// For now, we'll use a fallback approach
-		panic("failed to generate random secret: " + err.Error())
-	}
+	secret := []byte("fethur-development-secret-key-2024")
 	return &Service{
 		jwtSecret: secret,
 	}

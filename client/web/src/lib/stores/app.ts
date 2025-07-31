@@ -1,4 +1,4 @@
-import { writable, derived } from 'svelte/store';
+import { writable, derived, get } from 'svelte/store';
 import { browser } from '$app/environment';
 import type { User, Server, Channel, Message, ChatState, TypingEvent, AppState } from '$lib/types';
 import { apiClient, ApiError } from '$lib/api/client';
@@ -137,9 +137,11 @@ export const appActions = {
 export const chatActions = {
 	// Load messages for a channel
 	async loadMessages(channelId: number, limit = 50, before?: number): Promise<void> {
+		console.log('Loading messages for channel:', channelId);
 		chatStore.update(state => ({ 
 			...state, 
-			isLoadingMessages: true
+			isLoadingMessages: true,
+			currentChannelId: channelId
 		}));
 
 		try {
@@ -154,7 +156,8 @@ export const chatActions = {
 					? [...messages.reverse(), ...state.messages]
 					: messages.reverse(),
 				isLoadingMessages: false,
-				hasMoreMessages: response.hasMore || false
+				hasMoreMessages: response.hasMore || false,
+				currentChannelId: channelId
 			}));
 		} catch (error) {
 			console.error('Failed to load messages:', error);
@@ -185,6 +188,17 @@ export const chatActions = {
 
 	// Add message to store (from WebSocket events)
 	addMessage(message: Message): void {
+		console.log('Adding message to store:', message);
+		console.log('Current channel ID:', get(chatStore).currentChannelId);
+		console.log('Message channel ID:', message.channelId);
+		
+		// Only add message if it's for the current channel
+		const currentState = get(chatStore);
+		if (currentState.currentChannelId !== message.channelId) {
+			console.log('Message is for different channel, ignoring');
+			return;
+		}
+		
 		chatStore.update(state => ({
 			...state,
 			messages: [...state.messages, message].sort((a, b) => 
@@ -224,6 +238,15 @@ export const chatActions = {
 	// Clear chat state
 	clearChat(): void {
 		chatStore.set(initialChatState);
+	},
+
+	// Set current channel ID
+	setCurrentChannel(channelId: number): void {
+		console.log('Setting current channel ID:', channelId);
+		chatStore.update(state => ({
+			...state,
+			currentChannelId: channelId
+		}));
 	}
 };
 

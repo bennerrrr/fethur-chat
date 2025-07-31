@@ -24,12 +24,27 @@ export const replyingTo = derived(chatStore, ($chat) => $chat.replyingTo);
 export const chatActions = {
 	// Add message to store
 	addMessage(message: Message): void {
-		chatStore.update(state => ({
-			...state,
-			messages: [...state.messages, message].sort((a, b) => 
+		console.log('Adding message to store:', message);
+		console.log('Current channel ID:', get(chatStore).currentChannelId);
+		console.log('Message channel ID:', message.channelId);
+		
+		// Only add message if it's for the current channel
+		const currentState = get(chatStore);
+		if (currentState.currentChannelId !== message.channelId) {
+			console.log('Message is for different channel, ignoring');
+			return;
+		}
+		
+		chatStore.update(state => {
+			const newMessages = [...state.messages, message].sort((a, b) => 
 				new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-			)
-		}));
+			);
+			console.log('Updated messages count:', newMessages.length);
+			return {
+				...state,
+				messages: newMessages
+			};
+		});
 	},
 
 	// Update existing message
@@ -137,10 +152,7 @@ export const chatActions = {
 	// Send message
 	async sendMessage(channelId: number, content: string, replyToId?: number): Promise<void> {
 		try {
-			await apiClient.sendMessage(channelId, {
-				content,
-				replyToId
-			});
+			await apiClient.sendMessage(channelId, content, replyToId);
 			
 			// Clear reply after sending
 			if (replyToId) {
@@ -175,17 +187,28 @@ export const chatActions = {
 	// Load messages for channel
 	async loadMessages(channelId: number, limit = 50, before?: number): Promise<void> {
 		try {
-			chatStore.update(state => ({ ...state, isLoadingMessages: true }));
+			console.log('Loading messages for channel:', channelId);
+			chatStore.update(state => ({ ...state, isLoadingMessages: true, currentChannelId: channelId }));
 			
-			const response = await apiClient.getMessages(channelId, { limit, before });
+			// Use page 1 for initial load, or calculate page based on before parameter
+			const page = before ? Math.floor(before / limit) + 1 : 1;
+			const response = await apiClient.getMessages(channelId, page, limit);
+			
+			// Add safety checks for response structure
+			if (!response || !response.messages) {
+				console.error('Invalid response structure:', response);
+				chatStore.update(state => ({ ...state, isLoadingMessages: false }));
+				return;
+			}
 			
 			chatStore.update(state => ({
 				...state,
 				messages: before 
-					? [...response.data.reverse(), ...state.messages]
-					: response.data.reverse(),
-				hasMoreMessages: response.hasMore,
-				isLoadingMessages: false
+					? [...response.messages.reverse(), ...state.messages]
+					: response.messages.reverse(),
+				hasMoreMessages: response.messages.length === limit,
+				isLoadingMessages: false,
+				currentChannelId: channelId
 			}));
 		} catch (error) {
 			console.error('Failed to load messages:', error);
@@ -195,6 +218,7 @@ export const chatActions = {
 
 	// Clear messages (when switching channels)
 	clearMessages(): void {
+		console.log('Clearing messages and resetting chat state');
 		chatStore.set(initialChatState);
 	},
 
@@ -214,6 +238,15 @@ export const chatActions = {
 		chatStore.update(state => ({
 			...state,
 			typingUsers: state.typingUsers.filter(t => t.userId !== userId)
+		}));
+	},
+
+	// Set current channel ID
+	setCurrentChannel(channelId: number): void {
+		console.log('Setting current channel ID:', channelId);
+		chatStore.update(state => ({
+			...state,
+			currentChannelId: channelId
 		}));
 	}
 };

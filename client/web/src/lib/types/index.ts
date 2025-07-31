@@ -179,6 +179,7 @@ export interface ChatState {
 	hasMore: boolean;
 	hasMoreMessages?: boolean;
 	error: string | null;
+	currentChannelId?: number;
 }
 
 export interface TypingUser {

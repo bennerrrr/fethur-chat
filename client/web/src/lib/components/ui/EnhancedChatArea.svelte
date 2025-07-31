@@ -16,7 +16,7 @@
 	let showScrollToBottom = false;
 	let isLoadingOlder = false;
 
-	$: channelMessages = $messages;
+	$: channelMessages = $messages.filter(message => message && message.createdAt);
 	$: isVoiceChannel = channel?.type === 'voice';
 	$: hasVoiceConnection = $voiceStore.currentConnection?.channelId === channel?.id;
 
@@ -178,20 +178,22 @@
 				{/if}
 
 				<!-- Messages -->
-				{#each channelMessages as message, index (message.id)}
+				{#each channelMessages as message, index (message?.id || index)}
 					{@const prevMessage = channelMessages[index - 1]}
-					{@const isGrouped = prevMessage?.authorId === message.authorId && 
+					{@const isGrouped = message && prevMessage && prevMessage.authorId === message.authorId && 
 						new Date(message.createdAt).getTime() - new Date(prevMessage.createdAt).getTime() < 300000}
 					
-					<div class="message-wrapper" class:grouped={isGrouped}>
-						<EnhancedMessage 
-							{message} 
-							{currentUser}
-							isReply={!!message.replyToId}
-							showActions={true}
-							on:reply={handleReply}
-						/>
-					</div>
+					{#if message}
+						<div class="message-wrapper" class:grouped={isGrouped}>
+							<EnhancedMessage 
+								{message} 
+								{currentUser}
+								isReply={!!message.replyToId}
+								showActions={true}
+								on:reply={handleReply}
+							/>
+						</div>
+					{/if}
 				{/each}
 
 				<!-- Typing indicators -->

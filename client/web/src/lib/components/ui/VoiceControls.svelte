@@ -76,14 +76,19 @@
 		error = '';
 
 		try {
-			// Connect to voice server
-			await voiceClient.connect(token, import.meta.env.VITE_API_URL?.replace('http', 'ws') || 'ws://localhost:8081');
+			// Connect to voice server using relative URL to leverage Vite's proxy
+			await voiceClient.connect(token, '');
 			
 			// Start local audio stream
 			await voiceClient.startLocalStream();
 			
 			// Join voice channel
 			await voiceClient.joinChannel(channelId, serverId);
+			
+			// Handle audio autoplay after user interaction
+			setTimeout(() => {
+				voiceClient.handleAudioAutoplay();
+			}, 1000);
 			
 		} catch (err: any) {
 			console.error('Failed to connect voice:', err);

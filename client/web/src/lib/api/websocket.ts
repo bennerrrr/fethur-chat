@@ -54,9 +54,11 @@ class WebSocketClient {
 				this.isConnectingState = true;
 				// Use relative URL in browser to leverage Vite's proxy
 				const wsUrl = browser ? `/ws?token=${encodeURIComponent(token)}` : `${this.url}/ws?token=${encodeURIComponent(token)}`;
+				console.log('Attempting WebSocket connection to:', wsUrl);
 				this.ws = new WebSocket(wsUrl);
 
 				this.ws.onopen = () => {
+					console.log('WebSocket connection opened successfully');
 					this.isConnectingState = false;
 					this.reconnectAttempts = 0;
 					this.startHeartbeat();
@@ -69,6 +71,7 @@ class WebSocketClient {
 				};
 
 				this.ws.onclose = (event) => {
+					console.log('WebSocket connection closed:', event.code, event.reason);
 					this.isConnectingState = false;
 					this.stopHeartbeat();
 					this.emit('disconnected', { 
@@ -83,6 +86,7 @@ class WebSocketClient {
 				};
 
 				this.ws.onerror = (error) => {
+					console.error('WebSocket connection error:', error);
 					this.isConnectingState = false;
 					this.emit('error', { error, timestamp: new Date() });
 					reject(new Error('WebSocket connection failed'));
@@ -133,26 +137,32 @@ class WebSocketClient {
 
 	private handleMessage(event: MessageEvent): void {
 		try {
+			console.log('WebSocket message received:', event.data);
 			const data = JSON.parse(event.data);
 			
 			// Handle different message types based on backend format
 			switch (data.type) {
 				case 'text':
 					// Text message from backend
-					this.emit('message', {
+					console.log('Processing text message from backend:', data);
+					const messageEvent = {
 						type: 'message_created',
+						channelId: data.channel_id,
 						message: {
 							id: data.data?.id || Date.now(), // Use actual ID from backend
 							content: data.content,
-							channel_id: data.channel_id,
+							channelId: data.channel_id,
+							authorId: data.user_id,
 							author: {
 								id: data.user_id,
 								username: data.username
 							},
-							created_at: data.timestamp,
-							updated_at: data.timestamp
+							createdAt: data.data?.created_at || data.timestamp || new Date().toISOString(),
+							updatedAt: data.data?.created_at || data.timestamp || new Date().toISOString()
 						}
-					} as MessageEvent);
+					} as MessageEvent;
+					console.log('Emitting message event:', messageEvent);
+					this.emit('message', messageEvent);
 					break;
 				
 				case 'join':

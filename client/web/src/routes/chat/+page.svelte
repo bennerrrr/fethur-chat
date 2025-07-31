@@ -150,7 +150,11 @@
 
 	async function selectChannel(channel: Channel) {
 		try {
+			console.log('Selecting channel:', channel);
 			appActions.setCurrentChannel(channel);
+			
+			// Set current channel in chat store
+			chatActions.setCurrentChannel(channel.id);
 			
 			// Load messages for the channel
 			await chatActions.loadMessages(channel.id);

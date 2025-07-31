@@ -129,6 +129,9 @@ func (s *Server) setupRoutes() {
 			protected.POST("/servers/:id/channels", s.handleCreateChannel)
 			protected.GET("/servers/:id/channels", s.handleGetChannels)
 
+			// Server users route
+			protected.GET("/servers/:id/users", s.handleGetServerUsers)
+
 			// Message routes
 			protected.GET("/channels/:channelId/messages", s.handleGetMessages)
 			protected.POST("/channels/:channelId/messages", s.handleSendMessage)
@@ -724,15 +727,22 @@ func (s *Server) handleGetMessages(c *gin.Context) {
 	channelID := c.Param("channelId")
 	userID := c.GetInt("user_id")
 
+	// Convert channelID to int for proper comparison
+	channelIDInt, err := strconv.Atoi(channelID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid channel ID"})
+		return
+	}
+
 	// Check if user has access to channel
 	var exists bool
-	err := s.db.QueryRow(`
+	err = s.db.QueryRow(`
 		SELECT EXISTS(
 			SELECT 1 FROM channels c
 			JOIN server_members sm ON c.server_id = sm.server_id
 			WHERE c.id = ? AND sm.user_id = ?
 		)
-	`, channelID, userID).Scan(&exists)
+	`, channelIDInt, userID).Scan(&exists)
 
 	if err != nil || !exists {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Channel not found"})
@@ -741,13 +751,13 @@ func (s *Server) handleGetMessages(c *gin.Context) {
 
 	// Get messages
 	rows, err := s.db.Query(`
-		SELECT m.id, m.content, m.created_at, u.username
+		SELECT m.id, m.content, m.created_at, m.user_id, u.username
 		FROM messages m
 		JOIN users u ON m.user_id = u.id
 		WHERE m.channel_id = ?
 		ORDER BY m.created_at DESC
 		LIMIT 50
-	`, channelID)
+	`, channelIDInt)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get messages"})
 		return
@@ -758,27 +768,35 @@ func (s *Server) handleGetMessages(c *gin.Context) {
 		}
 	}()
 
-	var messages []gin.H
+	messages := make([]gin.H, 0) // Initialize as empty slice, not nil
 	for rows.Next() {
 		var message struct {
 			ID        int    `json:"id"`
 			Content   string `json:"content"`
 			CreatedAt string `json:"created_at"`
+			UserID    int    `json:"user_id"`
 			Username  string `json:"username"`
 		}
 
-		err := rows.Scan(&message.ID, &message.Content, &message.CreatedAt, &message.Username)
+		err := rows.Scan(&message.ID, &message.Content, &message.CreatedAt, &message.UserID, &message.Username)
 		if err != nil {
 			continue
 		}
 
 		messages = append(messages, gin.H{
-			"id":         message.ID,
-			"content":    message.Content,
-			"created_at": message.CreatedAt,
-			"username":   message.Username,
+			"id":        message.ID,
+			"content":   message.Content,
+			"createdAt": message.CreatedAt,
+			"authorId":  message.UserID,
+			"channelId": channelIDInt,
+			"author": gin.H{
+				"id":       message.UserID,
+				"username": message.Username,
+			},
 		})
 	}
+
+	log.Printf("Returning %d messages for channel %d", len(messages), channelIDInt)
 
 	c.JSON(http.StatusOK, gin.H{"messages": messages})
 }
@@ -818,7 +836,7 @@ func (s *Server) handleSendMessage(c *gin.Context) {
 
 	// Broadcast message to all connected clients via WebSocket
 	wsMessage := &websocket.Message{
-		Type:      "message",
+		Type:      "text",
 		ChannelID: channelIDInt,
 		Content:   req.Content,
 		UserID:    userID,
@@ -834,6 +852,7 @@ func (s *Server) handleSendMessage(c *gin.Context) {
 		},
 	}
 
+	log.Printf("Broadcasting message to channel %d: %s", channelIDInt, req.Content)
 	s.hub.BroadcastMessage(wsMessage)
 
 	c.JSON(http.StatusOK, gin.H{
@@ -875,21 +894,24 @@ func (s *Server) handleWebSocket(c *gin.Context) {
 
 func (s *Server) authMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Skip auth for WebSocket upgrade
-		if c.Request.URL.Path == "/ws" {
+		// Handle WebSocket authentication for both /ws and /voice paths
+		if c.Request.URL.Path == "/ws" || c.Request.URL.Path == "/voice" {
 			// Extract token from query parameter for WebSocket
 			token := c.Query("token")
 			if token == "" {
+				log.Printf("WebSocket auth failed: no token provided for path %s", c.Request.URL.Path)
 				c.AbortWithStatus(http.StatusUnauthorized)
 				return
 			}
 
 			claims, err := s.auth.ValidateToken(token)
 			if err != nil {
+				log.Printf("WebSocket auth failed: token validation error for path %s: %v", c.Request.URL.Path, err)
 				c.AbortWithStatus(http.StatusUnauthorized)
 				return
 			}
 
+			log.Printf("WebSocket auth successful: user %d (%s) for path %s", claims.UserID, claims.Username, c.Request.URL.Path)
 			c.Set("user_id", claims.UserID)
 			c.Set("username", claims.Username)
 			c.Next()
@@ -1588,4 +1610,80 @@ func (s *Server) logAdminAction(adminID int, action, details string) {
 	if err != nil {
 		log.Printf("Failed to log admin action: %v", err)
 	}
+}
+
+func (s *Server) handleGetServerUsers(c *gin.Context) {
+	serverID := c.Param("id")
+	userID := c.GetInt("user_id")
+
+	// Check if user is a member of this server
+	var isMember bool
+	err := s.db.QueryRow(
+		"SELECT EXISTS(SELECT 1 FROM server_members WHERE user_id = ? AND server_id = ?)",
+		userID, serverID,
+	).Scan(&isMember)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check server membership"})
+		return
+	}
+
+	if !isMember {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Not a member of this server"})
+		return
+	}
+
+	// Get all users who are members of this server
+	rows, err := s.db.Query(`
+		SELECT u.id, u.username, u.email, u.role, u.created_at, u.updated_at,
+		       0 as is_online
+		FROM users u
+		INNER JOIN server_members sm ON u.id = sm.user_id
+		WHERE sm.server_id = ?
+		ORDER BY u.username
+	`, serverID)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get server users"})
+		return
+	}
+	defer rows.Close()
+
+	var users []gin.H
+	for rows.Next() {
+		var user struct {
+			ID        int    `json:"id"`
+			Username  string `json:"username"`
+			Email     string `json:"email"`
+			Role      string `json:"role"`
+			CreatedAt string `json:"created_at"`
+			UpdatedAt string `json:"updated_at"`
+			IsOnline  bool   `json:"is_online"`
+		}
+
+		err := rows.Scan(&user.ID, &user.Username, &user.Email, &user.Role, &user.CreatedAt, &user.UpdatedAt, &user.IsOnline)
+		if err != nil {
+			continue
+		}
+
+		// Check if user is online by looking at WebSocket clients
+		s.clientsMux.RLock()
+		_, isOnline := s.clients[user.ID]
+		s.clientsMux.RUnlock()
+
+		users = append(users, gin.H{
+			"id":         user.ID,
+			"username":   user.Username,
+			"email":      user.Email,
+			"role":       user.Role,
+			"created_at": user.CreatedAt,
+			"updated_at": user.UpdatedAt,
+			"is_online":  isOnline,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    users,
+	})
 }

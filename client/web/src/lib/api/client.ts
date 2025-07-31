@@ -191,6 +191,11 @@ class ApiClient {
 		}));
 	}
 
+	async getServerUsers(serverId: number): Promise<User[]> {
+		const response = await this.request<{ success: boolean; data: User[] }>(`/api/servers/${serverId}/users`);
+		return response.data;
+	}
+
 	async createChannel(serverId: number, channelData: Partial<Channel>): Promise<Channel> {
 		return this.request<Channel>(`/api/servers/${serverId}/channels`, {
 			method: 'POST',

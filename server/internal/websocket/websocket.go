@@ -86,14 +86,30 @@ func (h *Hub) Run() {
 			log.Printf("Client unregistered: %s (ID: %d)", client.username, client.userID)
 
 		case message := <-h.broadcast:
+			log.Printf("Broadcasting message type %s to channel %d", message.Type, message.ChannelID)
 			h.mutex.RLock()
+			clientCount := 0
+			totalClients := len(h.clients)
 			for client := range h.clients {
-				// Check if client is subscribed to the channel
+				// For text messages, send to all clients (temporary fix for real-time messaging)
+				// For other messages, only send to subscribed clients
+				shouldSend := false
 				client.mutex.RLock()
-				if client.channels[message.ChannelID] {
+				if message.Type == MessageTypeText {
+					// Send text messages to all connected clients for now
+					shouldSend = true
+				} else {
+					// For other message types, only send to subscribed clients
+					shouldSend = client.channels[message.ChannelID]
+				}
+
+				if shouldSend {
+					clientCount++
 					select {
 					case client.send <- messageToBytes(message):
+						log.Printf("Sent message to client %s in channel %d", client.username, message.ChannelID)
 					default:
+						log.Printf("Failed to send message to client %s, closing connection", client.username)
 						close(client.send)
 						delete(h.clients, client)
 					}
@@ -101,6 +117,7 @@ func (h *Hub) Run() {
 				client.mutex.RUnlock()
 			}
 			h.mutex.RUnlock()
+			log.Printf("Broadcasted message to %d/%d clients in channel %d", clientCount, totalClients, message.ChannelID)
 		}
 	}
 }
@@ -179,6 +196,13 @@ func (c *Client) readPump() {
 			c.handleTyping(message.ChannelID, true)
 		case MessageTypeStopTyping:
 			c.handleTyping(message.ChannelID, false)
+		case "heartbeat":
+			// Respond to heartbeat with pong
+			response := &Message{
+				Type:      "pong",
+				Timestamp: time.Now(),
+			}
+			c.send <- messageToBytes(response)
 		default:
 			log.Printf("Unknown message type: %s", message.Type)
 		}
