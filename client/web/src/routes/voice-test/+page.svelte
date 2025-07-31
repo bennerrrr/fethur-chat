@@ -104,6 +104,89 @@
 		}
 	}
 
+	async function testSpeaking() {
+		try {
+			console.log('Testing speaking functionality...');
+			voiceClient.testSpeaking();
+		} catch (err) {
+			console.error('Test speaking error:', err);
+		}
+	}
+
+	async function testWebRTCConnection() {
+		try {
+			console.log('Testing WebRTC connection...');
+			await voiceClient.testWebRTCConnection();
+		} catch (err) {
+			console.error('Test WebRTC connection error:', err);
+		}
+	}
+
+	async function forceDisconnect() {
+		try {
+			console.log('Force disconnecting...');
+			voiceClient.forceDisconnect();
+			isConnected = false;
+			console.log('Force disconnect completed');
+		} catch (err) {
+			console.error('Force disconnect error:', err);
+		}
+	}
+
+	async function testReconnection() {
+		try {
+			console.log('Testing reconnection...');
+			await voiceClient.testReconnection();
+		} catch (err) {
+			console.error('Test reconnection error:', err);
+		}
+	}
+
+	async function checkRegistration() {
+		try {
+			console.log('Checking registration...');
+			await voiceClient.checkAndFixRegistration();
+		} catch (err) {
+			console.error('Check registration error:', err);
+		}
+	}
+
+	async function debugState() {
+		try {
+			console.log('Debugging state...');
+			await voiceClient.debugState();
+		} catch (err) {
+			console.error('Debug state error:', err);
+		}
+	}
+
+	async function forceReRegistration() {
+		try {
+			console.log('Force re-registering...');
+			await voiceClient.forceReRegistration();
+		} catch (err) {
+			console.error('Force re-registration error:', err);
+		}
+	}
+
+	async function triggerRegistration() {
+		try {
+			console.log('Triggering registration...');
+			await voiceClient.triggerRegistration();
+		} catch (err) {
+			console.error('Trigger registration error:', err);
+		}
+	}
+
+	async function checkConnectivity() {
+		try {
+			console.log('Checking connectivity...');
+			await voiceClient.checkBackendConnectivity();
+		} catch (err) {
+			console.error('Check connectivity error:', err);
+		}
+	}
+
 	async function loadAudioDevices() {
 		try {
 			// Check if MediaDevices API is available
@@ -202,6 +285,33 @@
 				{:else}
 					<button class="btn-secondary" on:click={disconnectVoice}>
 						🔌 Disconnect
+					</button>
+					<button class="btn-secondary" on:click={testSpeaking}>
+						🎤 Test Speaking
+					</button>
+					<button class="btn-secondary" on:click={testWebRTCConnection}>
+						🌐 Test WebRTC Connection
+					</button>
+					<button class="btn-secondary" on:click={forceDisconnect}>
+						🚫 Force Disconnect
+					</button>
+					<button class="btn-secondary" on:click={testReconnection}>
+						🔄 Test Reconnection
+					</button>
+					<button class="btn-secondary" on:click={checkRegistration}>
+						🔄 Check Registration
+					</button>
+					<button class="btn-secondary" on:click={debugState}>
+						🐛 Debug State
+					</button>
+					<button class="btn-secondary" on:click={forceReRegistration}>
+						🔄 Force Re-Registration
+					</button>
+					<button class="btn-secondary" on:click={triggerRegistration}>
+						🔄 Trigger Registration
+					</button>
+					<button class="btn-secondary" on:click={checkConnectivity}>
+						🌐 Check Backend Connectivity
 					</button>
 				{/if}
 			</div>

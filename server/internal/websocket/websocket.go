@@ -86,18 +86,17 @@ func (h *Hub) Run() {
 			log.Printf("Client unregistered: %s (ID: %d)", client.username, client.userID)
 
 		case message := <-h.broadcast:
-			log.Printf("Broadcasting message type %s to channel %d", message.Type, message.ChannelID)
+			log.Printf("📡 [WEBSOCKET] Broadcasting message type %s to channel %d", message.Type, message.ChannelID)
 			h.mutex.RLock()
 			clientCount := 0
 			totalClients := len(h.clients)
 			for client := range h.clients {
-				// For text messages, send to all clients (temporary fix for real-time messaging)
-				// For other messages, only send to subscribed clients
+				// Check if client is subscribed to the message's channel
 				shouldSend := false
 				client.mutex.RLock()
 				if message.Type == MessageTypeText {
-					// Send text messages to all connected clients for now
-					shouldSend = true
+					// For text messages, only send to clients subscribed to this channel
+					shouldSend = client.channels[message.ChannelID]
 				} else {
 					// For other message types, only send to subscribed clients
 					shouldSend = client.channels[message.ChannelID]
@@ -107,9 +106,9 @@ func (h *Hub) Run() {
 					clientCount++
 					select {
 					case client.send <- messageToBytes(message):
-						log.Printf("Sent message to client %s in channel %d", client.username, message.ChannelID)
+						// Message sent successfully
 					default:
-						log.Printf("Failed to send message to client %s, closing connection", client.username)
+						log.Printf("❌ [WEBSOCKET] Failed to send message to client %s, closing connection", client.username)
 						close(client.send)
 						delete(h.clients, client)
 					}
@@ -117,7 +116,7 @@ func (h *Hub) Run() {
 				client.mutex.RUnlock()
 			}
 			h.mutex.RUnlock()
-			log.Printf("Broadcasted message to %d/%d clients in channel %d", clientCount, totalClients, message.ChannelID)
+			log.Printf("📊 [WEBSOCKET] Broadcasted message to %d/%d clients in channel %d", clientCount, totalClients, message.ChannelID)
 		}
 	}
 }
@@ -261,6 +260,8 @@ func (c *Client) handleJoinChannel(channelID int) {
 	c.channels[channelID] = true
 	c.mutex.Unlock()
 
+	log.Printf("👥 [WEBSOCKET] User %s joined channel %d", c.username, channelID)
+
 	// Send join notification
 	message := &Message{
 		Type:      MessageTypeJoin,
@@ -271,7 +272,7 @@ func (c *Client) handleJoinChannel(channelID int) {
 	}
 
 	c.hub.broadcast <- message
-	log.Printf("User %s joined channel %d", c.username, channelID)
+	log.Printf("📡 [WEBSOCKET] Broadcasted join notification for user %s in channel %d", c.username, channelID)
 }
 
 func (c *Client) handleLeaveChannel(channelID int) {
@@ -294,8 +295,9 @@ func (c *Client) handleLeaveChannel(channelID int) {
 
 func (c *Client) handleTextMessage(message *Message) {
 	// Broadcast text message to channel
+	log.Printf("💬 [WEBSOCKET] Broadcasting text message from %s in channel %d: %s", c.username, message.ChannelID, message.Content)
 	c.hub.broadcast <- message
-	log.Printf("Message from %s in channel %d: %s", c.username, message.ChannelID, message.Content)
+	log.Printf("📡 [WEBSOCKET] Message broadcasted to channel %d", message.ChannelID)
 }
 
 func (c *Client) handleTyping(channelID int, isTyping bool) {

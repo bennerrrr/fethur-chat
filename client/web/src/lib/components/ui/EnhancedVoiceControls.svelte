@@ -116,6 +116,19 @@
 		} catch (err) {
 			console.error('Failed to disconnect voice:', err);
 			error = 'Failed to disconnect from voice channel';
+			// Even if there's an error, try to force disconnect
+			try {
+				console.log('Attempting force disconnect...');
+				voiceClient.forceDisconnect();
+				showDisconnectConfirm = false;
+				showSuccessMessage = true;
+				setTimeout(() => {
+					showSuccessMessage = false;
+				}, 3000);
+				console.log('Force disconnect completed');
+			} catch (forceErr) {
+				console.error('Failed to force disconnect:', forceErr);
+			}
 		} finally {
 			isDisconnecting = false;
 		}

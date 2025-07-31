@@ -4,6 +4,33 @@ import type { User, Server, Channel, Message, ChatState, TypingEvent, AppState }
 import { apiClient, ApiError } from '$lib/api/client';
 import { wsClient } from '$lib/api/websocket';
 
+// Helper functions for localStorage persistence
+function loadFromStorage<T>(key: string, defaultValue: T): T {
+	if (!browser) return defaultValue;
+	try {
+		const stored = localStorage.getItem(key);
+		return stored ? JSON.parse(stored) : defaultValue;
+	} catch (error) {
+		console.warn(`Failed to load ${key} from localStorage:`, error);
+		return defaultValue;
+	}
+}
+
+function saveToStorage<T>(key: string, value: T): void {
+	if (!browser) return;
+	try {
+		localStorage.setItem(key, JSON.stringify(value));
+	} catch (error) {
+		console.warn(`Failed to save ${key} to localStorage:`, error);
+	}
+}
+
+// Load persisted state
+const persistedState = loadFromStorage('app_state', {
+	currentServerId: null as number | null,
+	currentChannelId: null as number | null
+});
+
 // Initial app state
 const initialState: AppState = {
 	currentUser: null,
@@ -20,7 +47,8 @@ const initialChatState: ChatState = {
 	isLoadingMessages: false,
 	hasMoreMessages: true,
 	replyingTo: null,
-	selectedMessage: null
+	selectedMessage: null,
+	currentChannelId: undefined
 };
 
 // Create app store
@@ -56,6 +84,13 @@ export const appActions = {
 			currentServer: server,
 			currentChannel: null // Clear channel when server changes
 		}));
+		
+		// Persist server selection
+		saveToStorage('app_state', {
+			...persistedState,
+			currentServerId: server?.id || null,
+			currentChannelId: null
+		});
 	},
 
 	// Set current channel
@@ -64,6 +99,12 @@ export const appActions = {
 			...state,
 			currentChannel: channel
 		}));
+		
+		// Persist channel selection
+		saveToStorage('app_state', {
+			...persistedState,
+			currentChannelId: channel?.id || null
+		});
 	},
 
 	// Set servers list
@@ -123,13 +164,53 @@ export const appActions = {
 		appStore.set(initialState);
 	},
 
-	// Initialize app with user data
+	// Initialize app with user
 	initialize(user: User): void {
 		appStore.update(state => ({
 			...state,
-			currentUser: user,
-			isConnected: true
+			currentUser: user
 		}));
+		
+		// Restore persisted state
+		this.restorePersistedState();
+	},
+
+	// Restore persisted state
+	async restorePersistedState(): Promise<void> {
+		const persisted = loadFromStorage('app_state', {
+			currentServerId: null as number | null,
+			currentChannelId: null as number | null
+		});
+		
+		if (persisted.currentServerId) {
+			try {
+				// Find the server in the current servers list
+				const currentState = get(appStore);
+				const server = currentState.servers.find(s => s.id === persisted.currentServerId);
+				
+				if (server) {
+					// Load channels for the server
+					const channels = await apiClient.getChannels(server.id);
+					const serverWithChannels = { ...server, channels };
+					
+					// Update the server in the store with channels
+					this.updateServer(server.id, { channels });
+					
+					// Set the current server
+					this.setCurrentServer(serverWithChannels);
+					
+					// Restore channel if it exists
+					if (persisted.currentChannelId && channels.length > 0) {
+						const channel = channels.find(c => c.id === persisted.currentChannelId);
+						if (channel) {
+							this.setCurrentChannel(channel);
+						}
+					}
+				}
+			} catch (error) {
+				console.warn('Failed to restore persisted state:', error);
+			}
+		}
 	}
 };
 
@@ -186,16 +267,16 @@ export const chatActions = {
 		}
 	},
 
-	// Add message to store (from WebSocket events)
+	// Add message to chat
 	addMessage(message: Message): void {
-		console.log('Adding message to store:', message);
-		console.log('Current channel ID:', get(chatStore).currentChannelId);
-		console.log('Message channel ID:', message.channelId);
+		const currentState = get(chatStore);
 		
 		// Only add message if it's for the current channel
-		const currentState = get(chatStore);
+		if (currentState.currentChannelId === undefined) {
+			return;
+		}
+		
 		if (currentState.currentChannelId !== message.channelId) {
-			console.log('Message is for different channel, ignoring');
 			return;
 		}
 		
@@ -242,7 +323,6 @@ export const chatActions = {
 
 	// Set current channel ID
 	setCurrentChannel(channelId: number): void {
-		console.log('Setting current channel ID:', channelId);
 		chatStore.update(state => ({
 			...state,
 			currentChannelId: channelId
@@ -276,16 +356,6 @@ if (browser) {
 		}));
 	});
 
-	// Message events
-	wsClient.on('message', (event: any) => {
-		if (event.type === 'message_created') {
-			chatActions.addMessage(event.message);
-		}
-		// Handle other message events (updated, deleted) here
-	});
-
-	// Typing events
-	wsClient.on('typing', (event: TypingEvent) => {
-		chatActions.updateTypingUsers(event);
-	});
+	// Note: Message and typing events are handled in the chat page component
+	// to avoid duplicate processing and ensure proper channel filtering
 }

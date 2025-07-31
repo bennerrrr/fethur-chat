@@ -806,14 +806,19 @@ func (s *Server) handleSendMessage(c *gin.Context) {
 	userID := c.GetInt("user_id")
 	username := c.GetString("username")
 
+	log.Printf("📤 [SERVER] Received message request - Channel: %s, User: %s (ID: %d)", channelID, username, userID)
+
 	var req struct {
 		Content string `json:"content" binding:"required"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Printf("❌ [SERVER] Failed to bind JSON: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
+	log.Printf("📝 [SERVER] Message content: %s", req.Content)
 
 	// Insert message into database
 	result, err := s.db.Exec(
@@ -821,16 +826,18 @@ func (s *Server) handleSendMessage(c *gin.Context) {
 		channelID, userID, req.Content,
 	)
 	if err != nil {
+		log.Printf("❌ [SERVER] Failed to insert message into database: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send message"})
 		return
 	}
 
 	messageID, _ := result.LastInsertId()
+	log.Printf("✅ [SERVER] Message inserted into database with ID: %d", messageID)
 
 	// Convert channelID to int for WebSocket message
 	channelIDInt := 0
 	if _, err := fmt.Sscanf(channelID, "%d", &channelIDInt); err != nil {
-		log.Printf("Error parsing channel ID: %v", err)
+		log.Printf("❌ [SERVER] Error parsing channel ID: %v", err)
 		channelIDInt = 0
 	}
 
@@ -852,20 +859,23 @@ func (s *Server) handleSendMessage(c *gin.Context) {
 		},
 	}
 
-	log.Printf("Broadcasting message to channel %d: %s", channelIDInt, req.Content)
+	log.Printf("📡 [SERVER] Broadcasting message to channel %d: %s", channelIDInt, req.Content)
 	s.hub.BroadcastMessage(wsMessage)
 
+	responseData := gin.H{
+		"id":         messageID,
+		"channel_id": channelID,
+		"user_id":    userID,
+		"username":   username,
+		"content":    req.Content,
+		"created_at": time.Now().Format(time.RFC3339),
+	}
+
+	log.Printf("✅ [SERVER] Sending response to client: %+v", responseData)
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Message sent successfully",
-		"data": gin.H{
-			"id":         messageID,
-			"channel_id": channelID,
-			"user_id":    userID,
-			"username":   username,
-			"content":    req.Content,
-			"created_at": time.Now().Format(time.RFC3339),
-		},
+		"data":    responseData,
 	})
 }
 

@@ -37,12 +37,25 @@ export const chatActions = {
 			messageCount: currentState.messages.length
 		});
 		
+		// Convert channel IDs to numbers for comparison
+		const messageChannelId = Number(message.channelId);
+		const currentChannelId = Number(currentState.currentChannelId);
+		
 		// Only add message if it's for the current channel
-		if (currentState.currentChannelId !== message.channelId) {
+		if (currentChannelId !== messageChannelId) {
 			console.log('🔴 [CHAT STORE] Message is for different channel, ignoring:', {
-				messageChannelId: message.channelId,
-				currentChannelId: currentState.currentChannelId
+				messageChannelId: messageChannelId,
+				currentChannelId: currentChannelId,
+				messageChannelIdType: typeof message.channelId,
+				currentChannelIdType: typeof currentState.currentChannelId
 			});
+			return;
+		}
+		
+		// Check if message already exists (to prevent duplicates)
+		const existingMessage = currentState.messages.find(m => m.id === message.id);
+		if (existingMessage) {
+			console.log('⚠️ [CHAT STORE] Message already exists, skipping:', message.id);
 			return;
 		}
 		
@@ -164,14 +177,43 @@ export const chatActions = {
 	// Send message
 	async sendMessage(channelId: number, content: string, replyToId?: number): Promise<void> {
 		try {
-			await apiClient.sendMessage(channelId, content, replyToId);
+			console.log('📤 [CHAT STORE] Sending message:', {
+				channelId,
+				content: content.substring(0, 50) + '...',
+				replyToId
+			});
+			
+			// Send message via API
+			const response = await apiClient.sendMessage(channelId, content, replyToId);
+			
+			console.log('✅ [CHAT STORE] Message sent successfully, response:', response);
+			
+			// Add the returned message to the store immediately
+			if (response) {
+				const message: Message = {
+					id: response.id,
+					content: response.content,
+					channelId: response.channel_id,
+					authorId: response.user_id,
+					author: {
+						id: response.user_id,
+						username: response.username
+					},
+					createdAt: response.created_at,
+					updatedAt: response.created_at,
+					isEdited: false
+				};
+				
+				console.log('✅ [CHAT STORE] Adding sent message to store:', message);
+				chatActions.addMessage(message);
+			}
 			
 			// Clear reply after sending
 			if (replyToId) {
 				chatActions.clearReply();
 			}
 		} catch (error) {
-			console.error('Failed to send message:', error);
+			console.error('❌ [CHAT STORE] Failed to send message:', error);
 			throw error;
 		}
 	},
@@ -199,7 +241,21 @@ export const chatActions = {
 	// Load messages for channel
 	async loadMessages(channelId: number, limit = 50, before?: number): Promise<void> {
 		try {
-			console.log('🔄 [CHAT STORE] Loading messages for channel:', channelId);
+			const currentState = get(chatStore);
+			console.log('🔄 [CHAT STORE] Loading messages for channel:', {
+				channelId,
+				currentChannelId: currentState.currentChannelId,
+				existingMessageCount: currentState.messages.length,
+				isLoading: currentState.isLoadingMessages,
+				before
+			});
+			
+			// Don't reload if already loading for this channel
+			if (currentState.isLoadingMessages && currentState.currentChannelId === channelId) {
+				console.log('⏭️ [CHAT STORE] Already loading messages for channel, skipping');
+				return;
+			}
+			
 			chatStore.update(state => ({ 
 				...state, 
 				isLoadingMessages: true, 
@@ -227,6 +283,9 @@ export const chatActions = {
 				isLoadingMessages: false,
 				currentChannelId: channelId
 			}));
+			
+			const updatedState = get(chatStore);
+			console.log('✅ [CHAT STORE] Final message count:', updatedState.messages.length);
 		} catch (error) {
 			console.error('❌ [CHAT STORE] Failed to load messages:', error);
 			chatStore.update(state => ({ ...state, isLoadingMessages: false }));
@@ -235,8 +294,14 @@ export const chatActions = {
 
 	// Clear messages (when switching channels)
 	clearMessages(): void {
+		const currentState = get(chatStore);
 		console.log('🧹 [CHAT STORE] Clearing messages and resetting chat state');
-		chatStore.set(initialChatState);
+		console.log('🧹 [CHAT STORE] Preserving currentChannelId:', currentState.currentChannelId);
+		
+		chatStore.update(state => ({
+			...initialChatState,
+			currentChannelId: currentState.currentChannelId // Preserve the current channel ID
+		}));
 	},
 
 	// Add typing indicator
@@ -260,10 +325,24 @@ export const chatActions = {
 
 	// Set current channel ID
 	setCurrentChannel(channelId: number): void {
-		console.log('🎯 [CHAT STORE] Setting current channel ID:', channelId);
+		const currentState = get(chatStore);
+		console.log('🎯 [CHAT STORE] Setting current channel ID:', {
+			oldChannelId: currentState.currentChannelId,
+			newChannelId: channelId,
+			oldChannelIdType: typeof currentState.currentChannelId,
+			newChannelIdType: typeof channelId
+		});
+		
 		chatStore.update(state => ({
 			...state,
 			currentChannelId: channelId
 		}));
+		
+		// Verify the update
+		const updatedState = get(chatStore);
+		console.log('✅ [CHAT STORE] Channel ID updated successfully:', {
+			currentChannelId: updatedState.currentChannelId,
+			currentChannelIdType: typeof updatedState.currentChannelId
+		});
 	}
 };

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
+	import { get } from 'svelte/store';
 	import { goto } from '$app/navigation';
 	import { browser } from '$app/environment';
 	import { LoadingSpinner } from '$lib/components/ui';
@@ -25,6 +26,17 @@
 	$: currentServer = $appStore.currentServer;
 	$: currentChannel = $appStore.currentChannel;
 	$: isConnected = $appStore.isConnected;
+	
+	// Keep chat store currentChannelId in sync with app store
+	$: if (currentChannel && get(chatStore).currentChannelId !== currentChannel.id) {
+		chatActions.setCurrentChannel(currentChannel.id);
+	}
+	
+	// Also sync when currentChannel becomes null
+	$: if (!currentChannel && get(chatStore).currentChannelId !== undefined) {
+		// Clear the channel ID by setting it to a sentinel value that won't match any real channel
+		chatActions.setCurrentChannel(-1);
+	}
 	
 	// Initialize servers array
 	let servers: Server[] = [];
@@ -150,28 +162,18 @@
 
 	async function selectChannel(channel: Channel) {
 		try {
-			console.log('🎯 [CHAT PAGE] Selecting channel:', {
-				channelId: channel.id,
-				channelName: channel.name,
-				channelType: channel.type
-			});
-			
+			// First, set the channel in the app store
 			appActions.setCurrentChannel(channel);
 			
-			// Set current channel in chat store
-			console.log('🎯 [CHAT PAGE] Setting current channel in chat store:', channel.id);
+			// Immediately set current channel in chat store to ensure synchronization
 			chatActions.setCurrentChannel(channel.id);
 			
 			// Load messages for the channel
-			console.log('🔄 [CHAT PAGE] Loading messages for channel:', channel.id);
 			await chatActions.loadMessages(channel.id);
 			
 			// Join channel via WebSocket
 			if (wsClient.isConnected()) {
-				console.log('🔗 [CHAT PAGE] Joining channel via WebSocket:', channel.id);
 				wsClient.joinChannel(channel.id);
-			} else {
-				console.log('❌ [CHAT PAGE] WebSocket not connected, cannot join channel');
 			}
 		} catch (err) {
 			console.error('❌ [CHAT PAGE] Failed to load messages:', err);
@@ -195,26 +197,17 @@
 		
 		// Listen for new messages
 		wsClient.on('message', (data: unknown) => {
-			console.log('📨 [CHAT PAGE] Message event received:', data);
 			const messageEvent = data as { type: string; channelId: number; message: Message };
 			
-			console.log('🔍 [CHAT PAGE] Checking message event:', {
-				eventType: messageEvent.type,
-				eventChannelId: messageEvent.channelId,
-				currentChannelId: currentChannel?.id,
-				messageId: messageEvent.message?.id
-			});
+			// Get current channel ID from chat store
+			const currentChatState = get(chatStore);
 			
-			if (messageEvent.type === 'message_created' && messageEvent.channelId === currentChannel?.id) {
-				console.log('✅ [CHAT PAGE] Adding message to chat store');
+			// Convert to numbers for comparison
+			const eventChannelId = Number(messageEvent.channelId);
+			const chatStoreChannelId = Number(currentChatState.currentChannelId);
+			
+			if (messageEvent.type === 'message_created' && eventChannelId === chatStoreChannelId) {
 				chatActions.addMessage(messageEvent.message);
-			} else {
-				console.log('❌ [CHAT PAGE] Message not for current channel or wrong type:', {
-					eventType: messageEvent.type,
-					eventChannelId: messageEvent.channelId,
-					currentChannelId: currentChannel?.id,
-					shouldAdd: messageEvent.type === 'message_created' && messageEvent.channelId === currentChannel?.id
-				});
 			}
 		});
 
@@ -228,7 +221,9 @@
 		wsClient.on('typing', (data: unknown) => {
 			console.log('⌨️ [CHAT PAGE] Typing event:', data);
 			const typingEvent = data as { channelId: number; userId: number; username: string; type: string };
-			if (typingEvent.channelId === currentChannel?.id) {
+			const currentChatState = get(chatStore);
+			
+			if (typingEvent.channelId === currentChatState.currentChannelId) {
 				console.log('✅ [CHAT PAGE] Adding typing indicator');
 				chatActions.updateTypingUsers({
 					type: typingEvent.type as 'typing_start' | 'typing_stop',

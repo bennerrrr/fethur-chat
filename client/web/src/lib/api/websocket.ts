@@ -153,28 +153,41 @@ class WebSocketClient {
 						messageId: data.data?.id
 					});
 					
+					// Handle different message structures from backend
+					let messageId = data.data?.id;
+					let messageContent = data.content;
+					let messageCreatedAt = data.data?.created_at || data.timestamp || new Date().toISOString();
+					
+					// If data is directly in the message (alternative structure)
+					if (!messageId && data.data) {
+						messageId = data.data.id;
+						messageContent = data.data.content;
+						messageCreatedAt = data.data.created_at || data.timestamp || new Date().toISOString();
+					}
+					
+					// Fallback to timestamp if no ID
+					if (!messageId) {
+						messageId = Date.now();
+						console.log('⚠️ [WEBSOCKET] No message ID found, using timestamp:', messageId);
+					}
+					
 					const messageEvent = {
 						type: 'message_created',
-						channelId: data.channel_id,
+						channelId: Number(data.channel_id), // Ensure it's a number
 						message: {
-							id: data.data?.id || Date.now(), // Use actual ID from backend
-							content: data.content,
-							channelId: data.channel_id,
+							id: messageId,
+							content: messageContent,
+							channelId: Number(data.channel_id), // Ensure it's a number
 							authorId: data.user_id,
 							author: {
 								id: data.user_id,
 								username: data.username
 							},
-							createdAt: data.data?.created_at || data.timestamp || new Date().toISOString(),
-							updatedAt: data.data?.created_at || data.timestamp || new Date().toISOString()
+							createdAt: messageCreatedAt,
+							updatedAt: messageCreatedAt
 						}
 					} as MessageEvent;
 					
-					console.log('✅ [WEBSOCKET] Emitting message event:', {
-						type: messageEvent.type,
-						channelId: messageEvent.channelId,
-						messageId: messageEvent.message.id
-					});
 					this.emit('message', messageEvent);
 					break;
 				}
@@ -216,6 +229,11 @@ class WebSocketClient {
 				case 'heartbeat':
 					// Handle heartbeat response
 					console.log('💓 [WEBSOCKET] Heartbeat received');
+					break;
+				
+				case 'pong':
+					// Handle pong response (heartbeat reply)
+					console.log('💓 [WEBSOCKET] Pong received');
 					break;
 				
 				default:

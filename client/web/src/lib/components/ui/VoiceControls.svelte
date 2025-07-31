@@ -100,9 +100,19 @@
 
 	async function disconnectVoice() {
 		try {
+			console.log('Disconnecting from voice channel...');
 			await voiceClient.leaveChannel();
+			console.log('Successfully disconnected from voice channel');
 		} catch (err) {
 			console.error('Failed to disconnect voice:', err);
+			// Even if there's an error, try to force disconnect
+			try {
+				console.log('Attempting force disconnect...');
+				voiceClient.forceDisconnect();
+				console.log('Force disconnect completed');
+			} catch (forceErr) {
+				console.error('Failed to force disconnect:', forceErr);
+			}
 		}
 	}
 
@@ -245,11 +255,73 @@
 		{/if}
 	</div>
 
+	<!-- Always visible debug button -->
+	<button 
+		class="debug-btn always-visible"
+		on:click={() => voiceClient.debugState()}
+		title="Show current voice state"
+	>
+		🐛 Debug
+	</button>
+
+	<!-- Force disconnect button for user switching -->
+	<button 
+		class="debug-btn always-visible force-disconnect"
+		on:click={() => voiceClient.forceDisconnect()}
+		title="Force disconnect (use when switching users)"
+	>
+		🚫 Force Disconnect
+	</button>
+
 	<!-- Error Display -->
 	{#if error}
 		<div class="voice-error">
 			<span>{error}</span>
 			<button on:click={() => error = ''} class="error-close">×</button>
+		</div>
+	{/if}
+
+	<!-- Debug Tools (show when there are issues or when trying to connect) -->
+	{#if error || isConnecting || voiceState?.isConnected}
+		<div class="debug-tools">
+			<h4>Debug Tools</h4>
+			<div class="debug-buttons">
+				<button 
+					class="debug-btn"
+					on:click={() => voiceClient.checkBackendConnectivity()}
+					title="Check if backend is responding"
+				>
+					🌐 Check Backend
+				</button>
+				<button 
+					class="debug-btn"
+					on:click={() => voiceClient.debugState()}
+					title="Show current voice state"
+				>
+					🐛 Debug State
+				</button>
+				<button 
+					class="debug-btn"
+					on:click={() => voiceClient.triggerRegistration()}
+					title="Manually trigger registration"
+				>
+					🔄 Trigger Registration
+				</button>
+				<button 
+					class="debug-btn"
+					on:click={() => voiceClient.forceReRegistration()}
+					title="Force re-registration"
+				>
+					🔄 Force Re-Register
+				</button>
+				<button 
+					class="debug-btn"
+					on:click={() => voiceClient.testReconnection()}
+					title="Test reconnection"
+				>
+					🔄 Test Reconnection
+				</button>
+			</div>
 		</div>
 	{/if}
 
@@ -519,6 +591,68 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
+	}
+
+	.debug-tools {
+		margin-top: 1rem;
+		padding: 0.5rem;
+		background: var(--color-surface-light);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-sm);
+		font-size: var(--font-size-sm);
+		color: var(--color-text-muted);
+	}
+
+	.debug-tools h4 {
+		margin-top: 0;
+		margin-bottom: 0.5rem;
+		color: var(--color-text);
+		font-size: var(--font-size-md);
+	}
+
+	.debug-buttons {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+	}
+
+	.debug-btn {
+		padding: 0.3rem 0.7rem;
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-sm);
+		background: var(--color-primary);
+		color: var(--color-text);
+		cursor: pointer;
+		transition: all 0.2s ease;
+		font-size: var(--font-size-sm);
+	}
+
+	.debug-btn:hover {
+		background: var(--color-accent);
+		border-color: var(--color-accent);
+	}
+
+	.debug-btn.always-visible {
+		margin-top: 0.5rem;
+		width: 100%;
+		justify-content: center;
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		color: var(--color-text-muted);
+	}
+
+	.debug-btn.always-visible:hover {
+		background: var(--color-primary);
+		color: var(--color-text);
+	}
+
+	.debug-btn.force-disconnect {
+		background: var(--color-error);
+		color: var(--color-text);
+	}
+
+	.debug-btn.force-disconnect:hover {
+		background: var(--color-error-dark);
 	}
 
 	.voice-settings-overlay {

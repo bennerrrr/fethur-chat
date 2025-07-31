@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount, afterUpdate } from 'svelte';
-	import { chatStore, chatActions, messages } from '$lib/stores/chat';
+	import { chatStore, chatActions, messages } from '$lib/stores/app';
 	import { voiceStore } from '$lib/stores/voice';
 	import type { Channel, User, Message } from '$lib/types';
 	import EnhancedMessage from './EnhancedMessage.svelte';
@@ -16,7 +16,12 @@
 	let showScrollToBottom = false;
 	let isLoadingOlder = false;
 
-	$: channelMessages = $messages.filter(message => message && message.createdAt);
+	$: channelMessages = $messages.filter(message => {
+		const isValid = message && message.createdAt;
+		const isForCurrentChannel = message?.channelId === channel?.id;
+		
+		return isValid && isForCurrentChannel;
+	});
 	$: isVoiceChannel = channel?.type === 'voice';
 	$: hasVoiceConnection = $voiceStore.currentConnection?.channelId === channel?.id;
 
@@ -34,7 +39,7 @@
 
 	async function loadChannelMessages(channelId: number) {
 		try {
-			chatActions.clearMessages();
+			chatActions.clearChat();
 			await chatActions.loadMessages(channelId);
 			scrollToBottom();
 		} catch (error) {
@@ -84,7 +89,8 @@
 
 	function handleReply(event: CustomEvent) {
 		const { message } = event.detail;
-		chatActions.setReplyTo(message);
+		// TODO: Implement reply functionality when available
+		console.log('Reply requested for message:', message.id);
 	}
 
 	function formatTypingUsers(users: any[]) {
