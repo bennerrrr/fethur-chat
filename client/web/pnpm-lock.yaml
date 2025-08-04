@@ -21,8 +21,8 @@ importers:
         specifier: ^4.1.0
         version: 4.1.0
       lucide-svelte:
-        specifier: ^0.400.0
-        version: 0.400.0(svelte@5.36.13)
+        specifier: ^0.536.0
+        version: 0.536.0(svelte@5.36.13)
       socket.io-client:
         specifier: ^4.7.5
         version: 4.8.1
@@ -1789,8 +1789,8 @@ packages:
   lru-cache@10.4.3:
     resolution: {integrity: sha512-JNAzZcXrCt42VGLuYz0zfAzDfAvJWW6AfYlDBQyDV5DClI2m5sAmK+OIO7s59XfsRsWHp02jAJrRadPRGTt6SQ==}
 
-  lucide-svelte@0.400.0:
-    resolution: {integrity: sha512-ED2fgoELg2qrXbQnsPhb1DlwfqwYTRqFvljQcpM2LZlsj5907RkJhKAdjBAc65fn3rMT7e6ecdXtTTMd2Vp8lg==}
+  lucide-svelte@0.536.0:
+    resolution: {integrity: sha512-UIm/R2IYZMs4HW134ik7rDqEDXdvXb109Fznb8mG7OFQShnXkRpAaoyytJ8FzXR5W6GbfQ+r5jHBnIUs6uQp9w==}
     peerDependencies:
       svelte: ^3 || ^4 || ^5.0.0-next.42
 
@@ -4467,7 +4467,7 @@ snapshots:
 
   lru-cache@10.4.3: {}
 
-  lucide-svelte@0.400.0(svelte@5.36.13):
+  lucide-svelte@0.536.0(svelte@5.36.13):
     dependencies:
       svelte: 5.36.13
 
