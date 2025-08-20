@@ -7,7 +7,7 @@ COPY client/web .
 RUN pnpm build
 
 # Build Go backend
-FROM golang:1.24-alpine AS builder
+FROM golang:1.25-alpine AS builder
 RUN apk add --no-cache git gcc musl-dev sqlite-dev
 WORKDIR /app
 COPY server/go.mod server/go.sum ./
